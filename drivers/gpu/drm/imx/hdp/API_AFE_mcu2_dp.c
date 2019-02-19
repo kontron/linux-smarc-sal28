@@ -418,6 +418,7 @@ static void aux_cfg_t28hpc(state_struct *state)
 #ifdef DEBUG
 	unsigned short rdata;
 #endif
+	Afe_write(state, TX_DIG_CTRL_REG_1, 0x3);
 	Afe_write(state, TX_DIG_CTRL_REG_2, 36);
 
 	Afe_write(state, TX_ANA_CTRL_REG_2, 0x0100);
