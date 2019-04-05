@@ -1610,7 +1610,9 @@ int enetc_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 		return enetc_hwtstamp_get(dev, rq);
 #endif
 
-	return -EINVAL;
+	if (!dev->phydev)
+		return -EINVAL;
+	return phy_mii_ioctl(dev->phydev, rq, cmd);
 }
 
 int enetc_alloc_msix(struct enetc_ndev_priv *priv)
