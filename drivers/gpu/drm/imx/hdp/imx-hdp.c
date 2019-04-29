@@ -22,7 +22,7 @@
 #include "../imx-drm.h"
 
 struct drm_display_mode *g_mode;
-uint8_t g_default_mode = 3;
+uint8_t g_default_mode = 5;
 static struct drm_display_mode edid_cea_modes[] = {
 	/* 3 - 720x480@60Hz */
 	{ DRM_MODE("720x480", DRM_MODE_TYPE_DRIVER, 27000, 720, 736,
@@ -34,10 +34,20 @@ static struct drm_display_mode edid_cea_modes[] = {
 		   1430, 1650, 0, 720, 725, 730, 750, 0,
 		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
 	  .vrefresh = 60, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
+	/* 0x1c - 1280x800@60Hz */
+	{ DRM_MODE("1280x800", DRM_MODE_TYPE_DRIVER, 83500, 1280, 1352,
+		   1480, 1680, 0, 800, 803, 809, 831, 0,
+		   DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .vrefresh = 60, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
 	/* 16 - 1920x1080@60Hz */
 	{ DRM_MODE("1920x1080", DRM_MODE_TYPE_DRIVER, 148500, 1920, 2008,
 		   2052, 2200, 0, 1080, 1084, 1089, 1125, 0,
 		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .vrefresh = 60, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
+	/* 0x44 - 1920x1200@60Hz RB */
+	{ DRM_MODE("1920x1200", DRM_MODE_TYPE_DRIVER, 154000, 1920, 1968,
+		   2000, 2080, 0, 1200, 1203, 1209, 1235, 0,
+		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC),
 	  .vrefresh = 60, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
 	/* 97 - 3840x2160@60Hz */
 	{ DRM_MODE("3840x2160", DRM_MODE_TYPE_DRIVER, 594000,
