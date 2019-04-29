@@ -36,10 +36,20 @@ static struct drm_display_mode edid_cea_modes[] = {
 		   1430, 1650, 0, 720, 725, 730, 750, 0,
 		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
 	  .vrefresh = 60, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
+	/* 0x1c - 1280x800@60Hz */
+	{ DRM_MODE("1280x800", DRM_MODE_TYPE_DRIVER, 83500, 1280, 1352,
+		   1480, 1680, 0, 800, 803, 809, 831, 0,
+		   DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .vrefresh = 60, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
 	/* 16 - 1920x1080@60Hz */
 	{ DRM_MODE("1920x1080", DRM_MODE_TYPE_DRIVER, 148500, 1920, 2008,
 		   2052, 2200, 0, 1080, 1084, 1089, 1125, 0,
 		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .vrefresh = 60, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
+	/* 0x44 - 1920x1200@60Hz RB */
+	{ DRM_MODE("1920x1200", DRM_MODE_TYPE_DRIVER, 154000, 1920, 1968,
+		   2000, 2080, 0, 1200, 1203, 1209, 1235, 0,
+		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC),
 	  .vrefresh = 60, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
 	/* 97 - 3840x2160@60Hz */
 	{ DRM_MODE("3840x2160", DRM_MODE_TYPE_DRIVER, 594000,
@@ -248,8 +258,14 @@ static void ls1028a_pixel_link_mux(state_struct *state,
 	    && mode->vdisplay == 2160)
 		val = 0x0402002c;
 	else if (mode->hdisplay == 1920
+		 && mode->vdisplay == 1200)
+		val = 0x1002002d;
+	else if (mode->hdisplay == 1920
 		 && mode->vdisplay == 1080)
 		val = 0x1002002c;
+	else if (mode->hdisplay == 1280
+		 && mode->vdisplay == 800)
+		val = 0x1c02002b;
 	else if (mode->hdisplay == 1280
 		 && mode->vdisplay == 720)
 		val = 0x2002002c;
@@ -1043,7 +1059,7 @@ static void hotplug_work_func(struct work_struct *work)
 
 	if (connector->status == connector_status_connected) {
 		/* Cable Connected */
-		if (drm_mode_equal(&hdp->video.pre_mode, &edid_cea_modes[3]))
+		if (drm_mode_equal(&hdp->video.pre_mode, &edid_cea_modes[5]))
 			imx_hdp_mode_setup(hdp, &hdp->video.pre_mode);
 		DRM_INFO("HDMI/DP Cable Plug In\n");
 		if (hdp->is_hpd_irq)
@@ -1305,7 +1321,7 @@ static int imx_hdp_imx_bind(struct device *dev, struct device *master,
 
 	/* Pixel Format - 1 RGB, 2 YCbCr 444, 3 YCbCr 420 */
 	/* bpp (bits per subpixel) - 8 24bpp, 10 30bpp, 12 36bpp, 16 48bpp */
-	ret = imx_hdp_call(hdp, phy_init, &hdp->state, &edid_cea_modes[2],
+	ret = imx_hdp_call(hdp, phy_init, &hdp->state, &edid_cea_modes[3],
 			   hdp->format, hdp->bpc);
 	if (ret < 0) {
 		DRM_ERROR("Failed to initialise HDP PHY\n");
