@@ -1075,6 +1075,9 @@ static ssize_t nxp_fspi_read(struct spi_nor *nor, loff_t from,
 {
 	struct nxp_fspi *fspi = nor->priv;
 
+	if (nor->read_opcode == SPINOR_OP_RDSFDP)
+		return -ENOTSUPP;
+
 	/* if necessary, ioremap buffer before AHB read, */
 	if (!fspi->ahb_addr) {
 		fspi->memmap_offs = fspi->chip_base_addr + from;
