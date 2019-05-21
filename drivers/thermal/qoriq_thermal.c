@@ -14,6 +14,7 @@
 #include <linux/thermal.h>
 
 #include "thermal_core.h"
+#include "thermal_hwmon.h"
 
 #define SITES_MAX	16
 
@@ -114,7 +115,7 @@ static const struct thermal_zone_of_device_ops tmu_tz_ops = {
 static int qoriq_tmu_register_tmu_zone(struct platform_device *pdev)
 {
 	struct qoriq_tmu_data *qdata = platform_get_drvdata(pdev);
-	int id, sites = 0;
+	int id, err, sites = 0;
 
 	for (id = 0; id < SITES_MAX; id++) {
 		qdata->sensor[id] = devm_kzalloc(&pdev->dev,
@@ -134,6 +135,10 @@ static int qoriq_tmu_register_tmu_zone(struct platform_device *pdev)
 				return PTR_ERR(qdata->sensor[id]->tzd);
 
 		}
+
+		err = thermal_add_hwmon_sysfs(qdata->sensor[id]->tzd);
+		if (err)
+			dev_warn(&pdev->dev, "Failed to add hwmon sysfs attributes\n");
 
 		sites |= 0x1 << (15 - id);
 	}
@@ -246,6 +251,17 @@ err_iomap:
 static int qoriq_tmu_remove(struct platform_device *pdev)
 {
 	struct qoriq_tmu_data *data = platform_get_drvdata(pdev);
+	int id;
+
+	/* Remove hwmon nodes */
+	for (id = 0; id < SITES_MAX; id++) {
+		if (IS_ERR(data->sensor[id]->tzd)) {
+			if (PTR_ERR(data->sensor[id]->tzd) == -ENODEV)
+				continue;
+		}
+
+		thermal_remove_hwmon_sysfs(data->sensor[id]->tzd);
+	}
 
 	/* Disable monitoring */
 	tmu_write(data, TMR_DISABLE, &data->regs->tmr);
