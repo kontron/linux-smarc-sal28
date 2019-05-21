@@ -13,6 +13,7 @@
 #include <linux/thermal.h>
 
 #include "thermal_core.h"
+#include "thermal_hwmon.h"
 
 #define SITES_MAX	16
 #define TMU_TEMP_PASSIVE_COOL_DELTA	10000
@@ -269,10 +270,15 @@ static int qoriq_tmu_register_tmu_zone(struct platform_device *pdev)
 			qdata->sensor[id]->temp_critical = trip[1].temperature;
 		}
 
+		ret = thermal_add_hwmon_sysfs(qdata->sensor[id]->tzd);
+		if (ret)
+			dev_warn(&pdev->dev, "Failed to add hwmon sysfs attributes\n");
+
 		if (qdata->ver == TMU_VER1)
 			sites |= 0x1 << (15 - id);
 		else
 			sites |= 0x1 << id;
+
 	}
 
 	/* Enable monitoring */
@@ -414,6 +420,17 @@ err:
 static int qoriq_tmu_remove(struct platform_device *pdev)
 {
 	struct qoriq_tmu_data *data = platform_get_drvdata(pdev);
+	int id;
+
+	/* Remove hwmon nodes */
+	for (id = 0; id < SITES_MAX; id++) {
+		if (IS_ERR(data->sensor[id]->tzd)) {
+			if (PTR_ERR(data->sensor[id]->tzd) == -ENODEV)
+				continue;
+		}
+
+		thermal_remove_hwmon_sysfs(data->sensor[id]->tzd);
+	}
 
 	/* Disable monitoring */
 	tmu_write(data, TMR_DISABLE, &data->regs->tmr);
