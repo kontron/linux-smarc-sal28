@@ -1510,4 +1510,10 @@ config GPIO_MOCKUP
 	  tools/testing/selftests/gpio/gpio-mockup.sh. Reference the usage in
 	  it.
 
+config GPIO_SL28CPLD
+	tristate "Kontron sl28 GPIO"
+	select MFD_SL28CPLD
+	help
+	  Say Y or M here to build support for the Kontron sl28 GPIO support.
+
 endif
