@@ -110,6 +110,41 @@ int dp_phy_init(state_struct *state, struct drm_display_mode *mode, int format,
 	return true;
 }
 
+int dp_read_dpcd(state_struct *state, unsigned int offset,
+		 void *buffer, size_t size)
+{
+	int ret;
+
+	DPTX_Read_DPCD_response resp_dpcd;
+
+	ret = CDN_API_DPTX_Read_DPCD_blocking(state, size, offset,
+					      &resp_dpcd, CDN_BUS_TYPE_APB);
+	if (ret) {
+		DRM_INFO("%s: function returned with status %d\n", __func__, ret);
+		return 1;
+	}
+	memcpy(buffer, resp_dpcd.buff, size);
+
+	return 0;
+}
+
+int dp_write_dpcd(state_struct *state, unsigned int offset,
+		  void *buffer, size_t size)
+{
+	int ret;
+
+	DPTX_Write_DPCD_response resp_dpcd;
+
+	ret = CDN_API_DPTX_Write_DPCD_blocking(state, size, offset, buffer,
+					       &resp_dpcd, CDN_BUS_TYPE_APB);
+	if (ret) {
+		DRM_INFO("%s: function returned with status %d\n", __func__, ret);
+		return 1;
+	}
+
+	return 0;
+}
+
 #ifdef DEBUG
 void print_header(void)
 {
@@ -398,6 +433,7 @@ void dp_mode_set(state_struct *state,
 		break;
 	}
 
+printk("%s state=%p\n", __func__, state);
 #ifdef DEBUG
 	dump_dpcd(state);
 #endif

@@ -23,5 +23,21 @@ int dp_phy_init_t28hpc(state_struct *state,
 		       int color_depth);
 int dp_get_edid_block(void *data, u8 *buf, u32 block, size_t len);
 int dp_get_hpd_state(state_struct *state, u8 *hpd);
+int dp_read_dpcd(state_struct *state, unsigned int offset,
+		  void *buffer, size_t size);
+int dp_write_dpcd(state_struct *state, unsigned int offset,
+		  void *buffer, size_t size);
+
+static inline int dp_readb_dpcd(state_struct *state, unsigned int offset,
+				u8 *val)
+{
+	return dp_read_dpcd(state, offset, val, 1);
+}
+
+static inline int dp_writeb_dpcd(state_struct *state, unsigned int offset,
+				 u8 val)
+{
+	return dp_read_dpcd(state, offset, &val, 1);
+}
 
 #endif

@@ -15,6 +15,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/backlight.h>
 
 #include "imx-hdp.h"
 #include "imx-hdmi.h"
@@ -1034,6 +1035,7 @@ static struct hdp_ops ls1028a_dp_ops = {
 	.pixel_clock_set_rate = imx8qm_dp_pixel_clock_set_rate,
 	.pixel_clock_enable = imx8qm_pixel_clock_enable,
 	.pixel_clock_disable = imx8qm_pixel_clock_disable,
+	.write_dpcd = dp_write_dpcd,
 };
 
 static struct hdp_devtype ls1028a_dp_devtype = {
@@ -1152,6 +1154,84 @@ done:
 	DRM_WARN("Enable resolution %s failed\n", resolution);
 
 	return 1;
+}
+
+static int imx_hdp_backlight_enable(state_struct *state, bool enable)
+{
+	int ret;
+	u8 val;
+
+	ret = dp_readb_dpcd(state, DP_EDP_DISPLAY_CONTROL_REGISTER, &val);
+	if (ret)
+		return 1;
+
+	if (enable)
+		val |= DP_EDP_BACKLIGHT_ENABLE;
+	else
+		val &= ~(DP_EDP_BACKLIGHT_ENABLE);
+
+	return dp_writeb_dpcd(state, DP_EDP_DISPLAY_CONTROL_REGISTER, val);
+}
+
+static int imx_hdp_backlight_set_brightness(state_struct *state,
+					    int brightness)
+{
+	u8 vals[2] = { brightness, 0 };
+	return dp_write_dpcd(state, DP_EDP_BACKLIGHT_BRIGHTNESS_MSB,
+			     vals, sizeof(vals));
+}
+
+static int imx_hdp_backlight_update_status(struct backlight_device *bdev)
+{
+	struct imx_hdp *hdp = bl_get_data(bdev);
+	int ret;
+	int brightness = bdev->props.brightness;
+
+	if (bdev->props.power != FB_BLANK_UNBLANK ||
+	    bdev->props.state & BL_CORE_SUSPENDED)
+	{
+		ret = imx_hdp_backlight_enable(&hdp->state, false);
+	} else {
+		ret = imx_hdp_backlight_enable(&hdp->state, true);
+		if (ret)
+			goto out;
+		ret = imx_hdp_backlight_set_brightness(&hdp->state, brightness);
+	}
+
+out:
+	return ret;
+}
+
+static int imx_hdp_backlight_get_brightness(struct backlight_device *bdev)
+{
+	printk("%s\n", __func__);
+	return 0;
+}
+
+static const struct backlight_ops imx_hdp_backlight_ops = {
+	.options = BL_CORE_SUSPENDRESUME,
+	.update_status = imx_hdp_backlight_update_status,
+	.get_brightness = imx_hdp_backlight_get_brightness,
+};
+
+int imx_hdp_backlight_init(struct device *dev)
+{
+	struct backlight_device *backlight;
+	struct imx_hdp *hdp = dev_get_drvdata(dev);
+
+	backlight = backlight_device_register(dev_name(dev), dev,
+			hdp, &imx_hdp_backlight_ops, NULL);
+	if (IS_ERR(backlight)) {
+		dev_err(dev, "unable to register backlight device (%ld)\n",
+				PTR_ERR(backlight));
+		return PTR_ERR(backlight);
+	}
+
+	backlight->props.max_brightness = 255;
+	backlight->props.brightness = 255;
+	backlight->props.power = FB_BLANK_UNBLANK;
+
+	return 0;
 }
 
 static int imx_hdp_imx_bind(struct device *dev, struct device *master,
@@ -1371,6 +1451,7 @@ static int imx_hdp_imx_bind(struct device *dev, struct device *master,
 	drm_mode_connector_attach_encoder(connector, encoder);
 
 	dev_set_drvdata(dev, hdp);
+	imx_hdp_backlight_init(dev);
 
 	INIT_DELAYED_WORK(&hdp->hotplug_work, hotplug_work_func);
 
