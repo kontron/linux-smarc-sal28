@@ -1900,4 +1900,9 @@ config RAVE_SP_CORE
 	  device found on several devices in RAVE line of hardware.
 
 endmenu
+
+config MFD_SL28CPLD
+	tristate "Kontron SMARC-sAL28 CPLD"
+	help
+	  The MFD driver allows access to the CPLD.
 endif
