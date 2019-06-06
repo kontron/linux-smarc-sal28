@@ -1818,4 +1818,9 @@ config MFD_VEXPRESS_SYSREG
 	  on the ARM Ltd. Versatile Express board.
 
 endmenu
+
+config MFD_SL28CPLD
+	tristate "Kontron SMARC-sAL28 CPLD"
+	help
+	  The MFD driver allows access to the CPLD.
 endif
