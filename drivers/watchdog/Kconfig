@@ -806,6 +806,19 @@ config STM32_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called stm32_iwdg.
 
+config SL28CPLD_WATCHDOG
+	tristate "SL28 CPLD watchdog support"
+	select WATCHDOG_CORE
+	select MFD_SL28CPLD
+	default y
+	help
+	  Say Y here to include support for the watchdog timer
+	  on the SL28 CPLD.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called sl28cpld_wdt.
+
+
 config UNIPHIER_WATCHDOG
 	tristate "UniPhier watchdog support"
 	depends on ARCH_UNIPHIER || COMPILE_TEST
