@@ -315,7 +315,7 @@
 		dcfg: dcfg@1e00000 {
 			compatible = "fsl,ls1028a-dcfg", "syscon";
 			reg = <0x0 0x1e00000 0x0 0x10000>;
-			big-endian;
+			little-endian;
 		};
 
 		rstcr: syscon@1e60000 {
