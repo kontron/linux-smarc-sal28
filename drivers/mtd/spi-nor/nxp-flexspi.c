@@ -411,6 +411,7 @@
 #define SEQID_RDFSR		14
 
 #define FSPI_MIN_IOMAP		SZ_4M
+#define QUADSPI_MMAP_SIZE   SZ_64M
 
 #define FSPI_RX_MAX_IPBUF_SIZE		0x200 /* 64 * 64bits  */
 #define FSPI_TX_MAX_IPBUF_SIZE		0x400 /* 128 * 64bits */
@@ -470,7 +471,6 @@ struct nxp_fspi {
 	struct device *dev;
 	struct completion c;
 	struct nxp_fspi_devtype_data *devtype_data;
-	u32 nor_size;
 	u32 nor_num;
 	u32 clk_rate;
 	u32 spi_rx_bus_width;
@@ -876,7 +876,6 @@ static ssize_t nxp_fspi_nor_write(struct nxp_fspi *fspi,
 
 static void nxp_fspi_set_map_addr(struct nxp_fspi *fspi)
 {
-	int nor_size = fspi->nor_size >> 10;
 	void __iomem *base = fspi->iobase;
 
 	/*
@@ -887,7 +886,7 @@ static void nxp_fspi_set_map_addr(struct nxp_fspi *fspi)
 	 * Need to Reset SAMEDEVICEEN bit in mcr2 reg, when require to add
 	 * support for different flashes.
 	 */
-	writel(nor_size, base + FSPI_FLSHA1CR0);
+	writel(QUADSPI_MMAP_SIZE >> 10, base + FSPI_FLSHA1CR0);
 	writel(0, base + FSPI_FLSHA2CR0);
 	writel(0, base + FSPI_FLSHB1CR0);
 	writel(0, base + FSPI_FLSHB2CR0);
@@ -1008,7 +1007,7 @@ static int nxp_fspi_nor_setup_last(struct nxp_fspi *fspi)
 static void nxp_fspi_set_base_addr(struct nxp_fspi *fspi,
 				      struct spi_nor *nor)
 {
-	fspi->chip_base_addr = fspi->nor_size * (nor - fspi->nor);
+	fspi->chip_base_addr = QUADSPI_MMAP_SIZE * (nor - fspi->nor);
 }
 
 static int nxp_fspi_read_reg(struct spi_nor *nor, u8 opcode, u8 *buf,
@@ -1265,6 +1264,9 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 
 	mutex_init(&fspi->lock);
 
+	/* Map the SPI NOR to accessiable address */
+	nxp_fspi_set_map_addr(fspi);
+
 	find_node = 0;
 	/* iterate the subnodes. */
 	for_each_available_child_of_node(dev->of_node, np) {
@@ -1318,13 +1320,6 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 		if (ret)
 			continue;
 
-		/* Set the correct NOR size now. */
-		if (fspi->nor_size == 0) {
-			fspi->nor_size = mtd->size;
-
-			/* Map the SPI NOR to accessiable address */
-			nxp_fspi_set_map_addr(fspi);
-		}
 		fspi->nor_populated[cs_num] = 1;
 
 		/*
