@@ -219,6 +219,9 @@
 			reg = <0x0 0x2000000 0x0 0x10000>;
 			interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 39>,
+			       <&edma0 1 38>;
 			status = "disabled";
 		};
 
@@ -229,6 +232,9 @@
 			reg = <0x0 0x2010000 0x0 0x10000>;
 			interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 37>,
+			       <&edma0 1 36>;
 			status = "disabled";
 		};
 
@@ -239,6 +245,9 @@
 			reg = <0x0 0x2020000 0x0 0x10000>;
 			interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 35>,
+			       <&edma0 1 34>;
 			status = "disabled";
 		};
 
@@ -249,6 +258,9 @@
 			reg = <0x0 0x2030000 0x0 0x10000>;
 			interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 41>,
+			       <&edma0 1 40>;
 			status = "disabled";
 		};
 
@@ -259,6 +271,9 @@
 			reg = <0x0 0x2040000 0x0 0x10000>;
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 43>,
+			       <&edma0 1 42>;
 			status = "disabled";
 		};
 
@@ -269,6 +284,9 @@
 			reg = <0x0 0x2050000 0x0 0x10000>;
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 45>,
+			       <&edma0 1 44>;
 			status = "disabled";
 		};
 
@@ -279,6 +297,9 @@
 			reg = <0x0 0x2060000 0x0 0x10000>;
 			interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 47>,
+			       <&edma0 1 46>;
 			status = "disabled";
 		};
 
@@ -289,6 +310,9 @@
 			reg = <0x0 0x2070000 0x0 0x10000>;
 			interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 17>,
+			       <&edma0 1 16>;
 			status = "disabled";
 		};
 
@@ -373,6 +397,9 @@
 			interrupts = <GIC_SPI 232 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
 			clock-names = "ipg";
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 33>,
+			       <&edma0 1 32>;
 			little-endian;
 			status = "disabled";
 		};
@@ -383,6 +410,9 @@
 			interrupts = <GIC_SPI 233 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
 			clock-names = "ipg";
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 31>,
+			       <&edma0 1 30>;
 			little-endian;
 			status = "disabled";
 		};
@@ -393,6 +423,9 @@
 			interrupts = <GIC_SPI 234 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
 			clock-names = "ipg";
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 29>,
+			       <&edma0 1 28>;
 			little-endian;
 			status = "disabled";
 		};
@@ -403,6 +436,9 @@
 			interrupts = <GIC_SPI 235 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
 			clock-names = "ipg";
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 27>,
+			       <&edma0 1 26>;
 			little-endian;
 			status = "disabled";
 		};
@@ -413,6 +449,9 @@
 			interrupts = <GIC_SPI 236 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
 			clock-names = "ipg";
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 25>,
+			       <&edma0 1 24>;
 			little-endian;
 			status = "disabled";
 		};
@@ -423,6 +462,9 @@
 			interrupts = <GIC_SPI 237 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clockgen 4 1>;
 			clock-names = "ipg";
+			dma-names = "tx", "rx";
+			dmas = <&edma0 1 23>,
+			       <&edma0 1 22>;
 			little-endian;
 			status = "disabled";
 		};
