@@ -989,7 +989,9 @@ static int ocelot_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 	case SIOCGHWTSTAMP:
 		return ocelot_hwstamp_get(port, ifr);
 	default:
-		return -EOPNOTSUPP;
+		if (!dev->phydev)
+			return -EOPNOTSUPP;
+		return phy_mii_ioctl(dev->phydev, ifr, cmd);
 	}
 }
 
