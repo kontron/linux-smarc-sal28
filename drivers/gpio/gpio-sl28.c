@@ -78,6 +78,12 @@ static int sl28cpld_gpio_direction_output(struct gpio_chip *chip,
 	return __sl28cpld_gpio_direction(chip, mask, mask);
 }
 
+static int sl28cpld_gpo_direction_output(struct gpio_chip *chip,
+					 unsigned int offset, int value)
+{
+	return 0;
+}
+
 static int sl28cpld_gpi_direction_input(struct gpio_chip *chip,
 					unsigned int offset)
 {
@@ -205,6 +211,7 @@ static int sl28cpld_gpio_probe(struct platform_device *pdev)
 		chip->set = sl28cpld_gpio_set;
 		break;
 	case sl28cpld_gpo:
+		chip->direction_output = sl28cpld_gpo_direction_output;
 		chip->set = sl28cpld_gpo_set;
 		chip->get = sl28cpld_gpi_get;
 		break;
