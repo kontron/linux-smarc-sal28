@@ -40,6 +40,20 @@ static int sl28cpld_fan_read(struct device *dev, enum hwmon_sensor_types type,
 	switch (attr) {
 	case hwmon_fan_input:
 		ret = regmap_read(fan->regmap, fan->offset, &value);
+		/*
+		 * The register has a 7 bit value and 1 bit which indicates the
+		 * scale. If the MSB is set, then the lower 7 bit has to be
+		 * multiplied by 8, to get the correct reading.
+		 */
+		if (value & 0x80)
+			value = (value & 0x7f) << 3;
+
+		/*
+		 * The counter period is 1000ms and the sysfs specification says we
+		 * should asssume 2 pulses per revolution.
+		 */
+		value *= 60 / 2;
+
 		break;
 	default:
 		return -EOPNOTSUPP;
