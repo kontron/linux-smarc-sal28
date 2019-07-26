@@ -688,6 +688,8 @@ static irqreturn_t lpuart_txint(int irq, void *dev_id)
 			lpuart32_write(&sport->port, sport->port.x_char, UARTDATA);
 		else
 			writeb(sport->port.x_char, sport->port.membase + UARTDR);
+		sport->port.x_char = 0;
+		sport->port.icount.tx++;
 		goto out;
 	}
 
