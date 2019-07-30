@@ -71,16 +71,31 @@ static int sl28cpld_gpio_direction_input(struct gpio_chip *chip,
 	return __sl28cpld_gpio_direction(chip, mask, 0);
 }
 
+static void __sl28cpld_gpio_set(struct gpio_chip *chip,
+				unsigned int offset, int value,
+				unsigned int addr)
+{
+	struct sl28cpld_gpio *gpio = gpiochip_get_data(chip);
+	int mask = 1 << offset;
+	int val = value << offset;
+
+	regmap_update_bits(gpio->regmap, gpio->offset + addr,
+			   mask, val);
+}
+
 static int sl28cpld_gpio_direction_output(struct gpio_chip *chip,
 					  unsigned int offset, int value)
 {
 	unsigned int mask = 1 << offset;
+
+	__sl28cpld_gpio_set(chip, offset, value, SL28CPLD_GPIO_OUT);
 	return __sl28cpld_gpio_direction(chip, mask, mask);
 }
 
 static int sl28cpld_gpo_direction_output(struct gpio_chip *chip,
 					 unsigned int offset, int value)
 {
+	__sl28cpld_gpio_set(chip, offset, value, 0);
 	return 0;
 }
 
@@ -112,18 +127,6 @@ static int sl28cpld_gpio_get(struct gpio_chip *chip, unsigned int offset)
 static int sl28cpld_gpi_get(struct gpio_chip *chip, unsigned int offset)
 {
 	return __sl28cpld_gpio_get(chip, offset, 0);
-}
-
-static void __sl28cpld_gpio_set(struct gpio_chip *chip,
-				unsigned int offset, int value,
-				unsigned int addr)
-{
-	struct sl28cpld_gpio *gpio = gpiochip_get_data(chip);
-	int mask = 1 << offset;
-	int val = value << offset;
-
-	regmap_update_bits(gpio->regmap, gpio->offset + addr,
-			   mask, val);
 }
 
 static void sl28cpld_gpio_set(struct gpio_chip *chip, unsigned int offset,
