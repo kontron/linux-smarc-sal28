@@ -577,14 +577,17 @@ static int felix_ports_init(struct pci_dev *pdev)
 		ethnp = of_parse_phandle(portnp, "cpu-ethernet", 0);
 		if (!ethnp)
 			return -EINVAL;
-		pair_ndev = of_find_net_device_by_node(ethnp);
-		if (!pair_ndev)
-			return -EPROBE_DEFER;
 		if (of_property_read_u32(portnp, "reg", &port))
 			return -EINVAL;
 
-		ocelot->cpu_port_id = port;
-		ocelot->num_cpu_ports = 1;
+		if (of_device_is_available(ethnp)) {
+			pair_ndev = of_find_net_device_by_node(ethnp);
+			if (!pair_ndev)
+				return -EPROBE_DEFER;
+
+			ocelot->cpu_port_id = port;
+			ocelot->num_cpu_ports = 1;
+		}
 	}
 
 	if (!pair_ndev)
