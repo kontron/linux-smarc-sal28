@@ -438,6 +438,9 @@ struct net_device *felix_port_get_pair_ndev(struct device_node *np, u32 *port)
 	if (!ethnp)
 		return NULL;
 
+	if (!of_device_is_available(ethnp))
+		return NULL;
+
 	if (of_property_read_u32(np, "reg", port))
 		return NULL;
 
@@ -583,7 +586,7 @@ static int felix_ports_init(struct pci_dev *pdev)
 	ocelot->cpu_port_id = port;
 	if (!pair_ndev) {
 		//TODO: Maybe defer probing
-		dev_warn(ocelot->dev, "Pair netdev for port %d not found\n",
+		dev_dbg(ocelot->dev, "Pair netdev for port %d not found\n",
 			 port);
 		ocelot->cpu_port_id = FELIX_MAX_NUM_PHY_PORTS;
 	}
