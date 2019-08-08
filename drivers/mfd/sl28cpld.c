@@ -23,6 +23,7 @@ static LIST_HEAD(sl28cpld_list);
 
 #define SL28CPLD_VERSION 0x03
 #define SL28CPLD_MAX_REGISTER 0x1f
+#define SL28CPLD_REQ_VERSION 14
 
 struct sl28cpld {
 	struct device *dev;
@@ -92,6 +93,12 @@ static int sl28cpld_probe(struct i2c_client *i2c,
 	ret = regmap_read(sl28cpld->regmap, SL28CPLD_VERSION, &cpld_version);
 	if (ret)
 		return ret;
+
+	if (cpld_version < SL28CPLD_REQ_VERSION) {
+		dev_err(dev, "CPLD not compatible, at least version %d needed\n",
+				SL28CPLD_REQ_VERSION);
+		return -EINVAL;
+	}
 
 	sl28cpld->dev = dev;
 	i2c_set_clientdata(i2c, sl28cpld);
