@@ -13,6 +13,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_address.h>
+#include <linux/interrupt.h>
 #include <linux/regmap.h>
 #include <linux/platform_device.h>
 #include <linux/gpio/driver.h>
@@ -24,6 +25,8 @@
 #define SL28CPLD_GPIO_DIR	0
 #define SL28CPLD_GPIO_OUT	1
 #define SL28CPLD_GPIO_IN	2
+#define SL28CPLD_GPIO_IE	3
+#define SL28CPLD_GPIO_IP	4
 
 enum sl28cpld_gpio_type {
 	sl28cpld_gpio,
@@ -35,6 +38,8 @@ struct sl28cpld_gpio {
 	struct gpio_chip gpio_chip;
 	struct regmap *regmap;
 	u32 offset;
+	struct mutex lock;
+	u8 ie;
 };
 
 static int sl28cpld_gpio_get_direction(struct gpio_chip *chip,
@@ -158,15 +163,127 @@ static const struct of_device_id sl28cpld_gpio_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sl28cpld_gpio_match);
 
+static void sl28cpld_gpio_irq_lock(struct irq_data *data)
+{
+	struct sl28cpld_gpio *gpio =
+		gpiochip_get_data(irq_data_get_irq_chip_data(data));
+
+	mutex_lock(&gpio->lock);
+}
+
+static void sl28cpld_gpio_irq_sync_unlock(struct irq_data *data)
+{
+	struct sl28cpld_gpio *gpio =
+		gpiochip_get_data(irq_data_get_irq_chip_data(data));
+
+	regmap_write(gpio->regmap, gpio->offset + SL28CPLD_GPIO_IE, gpio->ie);
+	mutex_unlock(&gpio->lock);
+}
+
+static void sl28cpld_gpio_irq_disable(struct irq_data *data)
+{
+	struct sl28cpld_gpio *gpio =
+		gpiochip_get_data(irq_data_get_irq_chip_data(data));
+
+	if (data->hwirq >= 8)
+		return;
+
+	gpio->ie &= ~(1 << data->hwirq);
+}
+
+static void sl28cpld_gpio_irq_enable(struct irq_data *data)
+{
+	struct sl28cpld_gpio *gpio =
+		gpiochip_get_data(irq_data_get_irq_chip_data(data));
+
+	if (data->hwirq >= 8)
+		return;
+
+	gpio->ie |= (1 << data->hwirq);
+}
+
+static int sl28cpld_gpio_irq_set_type(struct irq_data *data, unsigned int type)
+{
+	return 0;
+}
+
+static struct irq_chip sl28cpld_gpio_irqchip = {
+	.name			= "sl28cpld-gpio-irq",
+	.irq_bus_lock		= sl28cpld_gpio_irq_lock,
+	.irq_bus_sync_unlock	= sl28cpld_gpio_irq_sync_unlock,
+	.irq_disable		= sl28cpld_gpio_irq_disable,
+	.irq_enable		= sl28cpld_gpio_irq_enable,
+	.irq_set_type		= sl28cpld_gpio_irq_set_type,
+	.flags			= IRQCHIP_SKIP_SET_WAKE,
+};
+
+static irqreturn_t sl28cpld_gpio_irq_thread(int irq, void *data)
+{
+	struct sl28cpld_gpio *gpio = data;
+	unsigned int ip;
+	unsigned int virq;
+	int pin;
+	int ret;
+
+	ret = regmap_read(gpio->regmap, gpio->offset + SL28CPLD_GPIO_IP, &ip);
+	if (ret)
+		return IRQ_NONE;
+
+	/* there might be other interrupts pending, which are not enabled, mask
+	 * these */
+	ip &= gpio->ie;
+
+	/* ack the interrupts */
+	regmap_write(gpio->regmap, gpio->offset + SL28CPLD_GPIO_IP, ip);
+
+	/* and handle them */
+	while (ip) {
+		pin = __ffs(ip);
+		ip &= ~BIT(pin);
+
+		virq = irq_find_mapping(gpio->gpio_chip.irq.domain, pin);
+		if (virq)
+			handle_nested_irq(virq);
+	}
+
+	return IRQ_HANDLED;
+}
+
+static int sl28_cpld_gpio_irq_init(struct platform_device *pdev, int irq)
+{
+	struct sl28cpld_gpio *gpio = platform_get_drvdata(pdev);
+	int ret;
+
+	ret = gpiochip_irqchip_add_nested(&gpio->gpio_chip,
+					  &sl28cpld_gpio_irqchip, 0,
+					  handle_simple_irq, IRQ_TYPE_NONE);
+	if (ret)
+		return ret;
+
+	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+					sl28cpld_gpio_irq_thread,
+					IRQF_SHARED | IRQF_ONESHOT,
+					pdev->name, gpio);
+	if (ret)
+		return ret;
+
+	gpiochip_set_nested_irqchip(&gpio->gpio_chip, &sl28cpld_gpio_irqchip,
+				    irq);
+
+	return 0;
+}
+
 static int sl28cpld_gpio_probe(struct platform_device *pdev)
 {
 	struct sl28cpld_gpio *gpio;
+	struct device_node *np = pdev->dev.of_node;
 	const struct of_device_id *match;
 	enum sl28cpld_gpio_type type;
 	struct device *parent;
 	struct gpio_chip *chip;
 	int ret;
 	const __be32 *reg;
+	int irq;
 
 	match = of_match_device(sl28cpld_gpio_match, &pdev->dev);
 	if (!match)
@@ -189,7 +306,7 @@ static int sl28cpld_gpio_probe(struct platform_device *pdev)
 		return PTR_ERR(gpio->regmap);
 	}
 
-	reg = of_get_address(pdev->dev.of_node, 0, NULL, NULL);
+	reg = of_get_address(np, 0, NULL, NULL);
 	if (!reg) {
 		dev_err(&pdev->dev, "No 'offset' missing\n");
 		return -EINVAL;
@@ -197,6 +314,7 @@ static int sl28cpld_gpio_probe(struct platform_device *pdev)
 	gpio->offset = be32_to_cpu(*reg);
 
 	/* initialize struct gpio_chip */
+	mutex_init(&gpio->lock);
 	chip = &gpio->gpio_chip;
 	chip->parent = &pdev->dev;
 	chip->label = dev_name(&pdev->dev);
@@ -229,6 +347,13 @@ static int sl28cpld_gpio_probe(struct platform_device *pdev)
 		return ret;
 
 	platform_set_drvdata(pdev, gpio);
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq > 0 && of_property_read_bool(np, "interrupt-controller")) {
+		ret = sl28_cpld_gpio_irq_init(pdev, irq);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
