@@ -15,6 +15,7 @@
 #include <linux/of_platform.h>
 #include <linux/i2c.h>
 #include <linux/regmap.h>
+#include <linux/interrupt.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/sl28cpld.h>
 
@@ -22,6 +23,8 @@ static DEFINE_SPINLOCK(sl28cpld_list_slock);
 static LIST_HEAD(sl28cpld_list);
 
 #define SL28CPLD_VERSION 0x03
+#define SL28CPLD_INTC_IE 0x1c
+#define SL28CPLD_INTC_IP 0x1d
 #define SL28CPLD_MAX_REGISTER 0x1f
 #define SL28CPLD_REQ_VERSION 14
 
@@ -29,6 +32,7 @@ struct sl28cpld {
 	struct device *dev;
 	struct regmap *regmap;
 	struct list_head list;
+	struct regmap_irq_chip_data *irq_data;
 };
 
 struct regmap *sl28cpld_node_to_regmap(struct device_node *np)
@@ -74,6 +78,29 @@ static const struct regmap_config sl28cpld_regmap_config = {
 	.max_register = SL28CPLD_MAX_REGISTER,
 };
 
+static const struct regmap_irq sl28cpld_irqs[] = {
+	{ .mask = BIT(0) },
+	{ .mask = BIT(1) },
+	{ .mask = BIT(2) },
+	{ .mask = BIT(3) },
+	{ .mask = BIT(4) },
+	{ .mask = BIT(5) },
+	{ .mask = BIT(6) },
+	{ .mask = BIT(7) },
+};
+
+static const struct regmap_irq_chip sl28cpld_irq_chip = {
+	.name = "sl28cpld",
+	.irqs = sl28cpld_irqs,
+	.num_irqs = ARRAY_SIZE(sl28cpld_irqs),
+
+	.num_regs = 2,
+	.status_base = SL28CPLD_INTC_IP,
+	.mask_base = SL28CPLD_INTC_IE,
+	.mask_invert = true,
+	.ack_base = SL28CPLD_INTC_IP,
+};
+
 static int sl28cpld_probe(struct i2c_client *i2c,
 			  const struct i2c_device_id *id)
 {
@@ -106,6 +133,15 @@ static int sl28cpld_probe(struct i2c_client *i2c,
 	spin_lock(&sl28cpld_list_slock);
 	list_add_tail(&sl28cpld->list, &sl28cpld_list);
 	spin_unlock(&sl28cpld_list_slock);
+
+	if (i2c->irq > 0) {
+		ret = devm_regmap_add_irq_chip(dev, sl28cpld->regmap,
+				i2c->irq, IRQF_SHARED | IRQF_ONESHOT,
+				0, &sl28cpld_irq_chip, &sl28cpld->irq_data);
+		if (ret)
+			return ret;
+		dev_info(dev, "registered IRQ %d\n", i2c->irq);
+	}
 
 	dev_info(dev, "successfully probed. CPLD version %02Xh.\n",
 			cpld_version);
