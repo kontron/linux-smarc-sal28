@@ -52,6 +52,8 @@
 	rtc@32 {
 		compatible = "microcrystal,rv8803";
 		reg = <0x32>;
+		interrupt-parent = <&sl28cpld>;
+		interrupts = <0 0>;
 	};
 
 	sl28cpld: sl28cpld@4a {
@@ -59,6 +61,11 @@
 		#size-cells = <0>;
 		compatible = "kontron,sl28cpld";
 		reg = <0x4a>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
+
+		interrupt-controller;
+		#interrupt-cells = <2>;
 
 		watchdog@4 {
 			compatible = "kontron,sl28cpld-wdt";
@@ -85,6 +92,9 @@
 		cpld_gpio0: gpio0@10 {
 			compatible = "kontron,sl28cpld-gpio";
 			reg = <0x10>;
+			interrupt-parent = <&gpio1>;
+			interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
+
 			gpio-controller;
 			#gpio-cells = <2>;
 			gpio-line-names =
@@ -92,21 +102,30 @@
 				"GPIO2_CAM0_RST_N", "GPIO3_CAM1_RST_N",
 				"GPIO4_HDA_RST_N", "GPIO5_PWM_OUT",
 				"GPIO6_TACHIN", "GPIO7";
+
+			interrupt-controller;
+			#interrupt-cells = <2>;
 		};
 
-		cpld_gpio1: gpio1@13 {
+		cpld_gpio1: gpio1@15 {
 			compatible = "kontron,sl28cpld-gpio";
-			reg = <0x13>;
+			reg = <0x15>;
+			interrupt-parent = <&gpio1>;
+			interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
+
 			gpio-controller;
 			#gpio-cells = <2>;
 			gpio-line-names =
 				"GPIO8", "GPIO9", "GPIO10", "GPIO11",
 				"", "", "", "";
+
+			interrupt-controller;
+			#interrupt-cells = <2>;
 		};
 
-		cpld_gpo0: gpo0@16 {
+		cpld_gpo0: gpo0@1a {
 			compatible = "kontron,sl28cpld-gpo";
-			reg = <0x16>;
+			reg = <0x1a>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			gpio-line-names =
@@ -116,9 +135,9 @@
 				"", "";
 		};
 
-		cpld_gpi0: gpi0@17 {
+		cpld_gpi0: gpi0@1b {
 			compatible = "kontron,sl28cpld-gpi";
-			reg = <0x17>;
+			reg = <0x1b>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			gpio-line-names =
