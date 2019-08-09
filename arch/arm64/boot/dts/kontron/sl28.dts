@@ -1,0 +1,326 @@
+/*
+ * Device Tree Include file for Kontron SMARC-sAL28.
+ */
+
+/dts-v1/;
+#include "../freescale/fsl-ls1028a.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "Kontron SMARC-sAL28";
+	compatible = "kontron,sl28", "fsl,ls1028a";
+
+	aliases {
+		crypto = &crypto;
+		serial0 = &duart0;
+		serial1 = &duart1;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	emmc_pwrseq: emmc-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		reset-gpios = <&cpld_gpo0 2 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&esdhc {
+	status = "okay";
+	sd-uhs-sdr104;
+	sd-uhs-sdr50;
+	sd-uhs-sdr25;
+	sd-uhs-sdr12;
+};
+
+&esdhc1 {
+	status = "okay";
+	bus-width = <8>;
+	mmc-hs200-1_8v;
+	mmc-pwrseq = <&emmc_pwrseq>;
+};
+
+&i2c0 {
+	status = "okay";
+	/* DMA is broken for now (maybe just a driver issue). If the device
+	 * answers with a NAK, the DMA engine will not return and the I2C
+	 * driver will wait for a huge 1000ms timeout. This breaks the at24
+	 * driver for example. So disable the DMA engine for now. */
+	dma-names = <>;
+
+	rtc@32 {
+		compatible = "microcrystal,rv8803";
+		reg = <0x32>;
+	};
+
+	sl28cpld: sl28cpld@4a {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "kontron,sl28cpld";
+		reg = <0x4a>;
+
+		watchdog@4 {
+			compatible = "kontron,sl28cpld-wdt";
+			reg = <0x4>;
+		};
+
+		fan@b {
+			compatible = "kontron,sl28cpld-fan";
+			reg = <0xb>;
+		};
+
+		pwm0: pwm0@c {
+			#pwm-cells = <2>;
+			compatible = "kontron,sl28cpld-pwm";
+			reg = <0xc>;
+		};
+
+		pwm1: pwm1@e {
+			#pwm-cells = <2>;
+			compatible = "kontron,sl28cpld-pwm";
+			reg = <0xe>;
+		};
+
+		cpld_gpio0: gpio0@10 {
+			compatible = "kontron,sl28cpld-gpio";
+			reg = <0x10>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-line-names =
+				"GPIO0_CAM0_PWR_N", "GPIO1_CAM1_PWR_N",
+				"GPIO2_CAM0_RST_N", "GPIO3_CAM1_RST_N",
+				"GPIO4_HDA_RST_N", "GPIO5_PWM_OUT",
+				"GPIO6_TACHIN", "GPIO7";
+		};
+
+		cpld_gpio1: gpio1@13 {
+			compatible = "kontron,sl28cpld-gpio";
+			reg = <0x13>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-line-names =
+				"GPIO8", "GPIO9", "GPIO10", "GPIO11",
+				"", "", "", "";
+		};
+
+		cpld_gpo0: gpo0@16 {
+			compatible = "kontron,sl28cpld-gpo";
+			reg = <0x16>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-line-names =
+				"LCD0 voltage enable", "LCD0 backlight enable",
+				"eMMC reset", "LVDS bridge reset",
+				"LVDS bridge power-down", "SDIO power enable",
+				"", "";
+		};
+
+		cpld_gpi0: gpi0@17 {
+			compatible = "kontron,sl28cpld-gpi";
+			reg = <0x17>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-line-names =
+				"Power button", "Force recovery", "Sleep", "Battery low",
+				"Lid state", "Charging", "Charger present", "";
+		};
+	};
+
+	eeprom@50 {
+		compatible = "atmel,24c32";
+		reg = <0x50>;
+		pagesize = <32>;
+	};
+};
+
+&i2c3 {
+	status = "okay";
+
+	/* DMA is broken for now (maybe just a driver issue). If the device
+	 * answers with a NAK, the DMA engine will not return and the I2C
+	 * driver will wait for a huge 1000ms timeout. This breaks the at24
+	 * driver for example. So disable the DMA engine for now. */
+	dma-names = <>;
+};
+
+&i2c4 {
+	status = "okay";
+
+	/* DMA is broken for now (maybe just a driver issue). If the device
+	 * answers with a NAK, the DMA engine will not return and the I2C
+	 * driver will wait for a huge 1000ms timeout. This breaks the at24
+	 * driver for example. So disable the DMA engine for now. */
+	dma-names = <>;
+
+	eeprom@50 {
+		compatible = "atmel,24c32";
+		reg = <0x50>;
+		pagesize = <32>;
+	};
+};
+
+&fspi {
+	status = "okay";
+	nxp,fspi-has-second-chip;
+
+	w25q32jw@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "w25q32jw", "jedec,spi-nor";
+		m25p,fast-read;
+		spi-max-frequency = <133000000>;
+		reg = <0>;
+		/* The following setting enables 1-1-2 (CMD-ADDR-DATA) mode */
+		spi-rx-bus-width = <2>; /* 2 SPI Rx lines */
+		spi-tx-bus-width = <1>; /* 1 SPI Tx line */
+
+		partition@0 {
+			reg = <0x000000 0x010000>;
+			label = "rcw";
+		};
+
+		partition@10000 {
+			reg = <0x010000 0x0f0000>;
+			label = "failsafe bootloader";
+		};
+
+		partition@100000 {
+			reg = <0x100000 0x040000>;
+			label = "failsafe DP firmware";
+		};
+
+		partition@140000 {
+			reg = <0x140000 0x0a0000>;
+			label = "failsafe PPA firmware";
+		};
+
+		partition@1e0000 {
+			reg = <0x1e0000 0x020000>;
+			label = "reserved";
+		};
+
+		partition@200000 {
+			reg = <0x200000 0x010000>;
+			label = "configuration store";
+		};
+
+		partition@210000 {
+			reg = <0x210000 0x0f0000>;
+			label = "bootloader";
+		};
+
+		partition@300000 {
+			reg = <0x300000 0x040000>;
+			label = "DP firmware";
+		};
+
+		partition@340000 {
+			reg = <0x340000 0x0a0000>;
+			label = "PPA firmware";
+		};
+
+		partition@3e0000 {
+			reg = <0x3e0000 0x020000>;
+			label = "bootloader environment";
+		};
+	};
+};
+
+&duart0 {
+	status = "okay";
+};
+
+&duart1 {
+	status = "okay";
+};
+
+&lpuart1 {
+	status = "okay";
+};
+
+&can0 {
+	status = "okay";
+};
+
+&display1 {
+	resolution = "3840x2160@60",
+		   "1920x1080@60",
+		   "1280x720@60",
+		   "720x480@60";
+	lane_mapping = <0x4e>;
+	edp_link_rate = <0x6>;
+	edp_num_lanes = <0x4>;
+	status = "okay";
+};
+
+&enetc_mdio_pf3 {
+	phy0: ethernet-phy@5 {
+		reg = <0x5>;
+	};
+
+	phy1: ethernet-phy@4 {
+		reg = <0x4>;
+		status = "disabled";
+	};
+};
+
+&enetc_port0 {
+	phy-handle = <&phy0>;
+	phy-connection-type = "sgmii";
+	status = "okay";
+};
+
+&enetc_port1 {
+	phy-handle = <&phy1>;
+	phy-connection-type = "rgmii";
+	status = "disabled";
+};
+
+&enetc_port2 {
+	status = "disabled";
+};
+
+&enetc_port3 {
+	status = "disabled";
+};
+
+&switch_port0 {
+	status = "disabled";
+};
+
+&switch_port1 {
+	status = "disabled";
+};
+
+&switch_port2 {
+	status = "disabled";
+};
+
+&switch_port3 {
+	status = "disabled";
+};
+
+&switch_port4 {
+	status = "disabled";
+};
+
+&switch_port5 {
+	status = "disabled";
+};
+
+&gpio1 {
+	gpio-line-names =
+		"", "", "", "", "", "", "", "",
+		"", "", "", "", "", "", "", "",
+		"", "", "", "", "", "", "TDO", "TCK",
+		"", "", "", "", "", "", "", "";
+};
+
+&gpio2 {
+	gpio-line-names =
+		"", "", "", "", "", "", "TMS", "TDI",
+		"", "", "", "", "", "", "", "",
+		"", "", "", "", "", "", "", "",
+		"", "", "", "", "", "", "", "";
+};
