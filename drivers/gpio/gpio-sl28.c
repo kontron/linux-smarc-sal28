@@ -204,7 +204,8 @@ static void sl28cpld_gpio_irq_enable(struct irq_data *data)
 
 static int sl28cpld_gpio_irq_set_type(struct irq_data *data, unsigned int type)
 {
-	return 0;
+	/* only edge triggered interrupts on both edges are supported */
+	return (type == IRQ_TYPE_EDGE_BOTH) ? 0 : -EINVAL;
 }
 
 static struct irq_chip sl28cpld_gpio_irqchip = {
