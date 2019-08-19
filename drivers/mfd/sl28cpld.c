@@ -143,7 +143,7 @@ static int sl28cpld_probe(struct i2c_client *i2c,
 		dev_info(dev, "registered IRQ %d\n", i2c->irq);
 	}
 
-	dev_info(dev, "successfully probed. CPLD version %02Xh.\n",
+	dev_info(dev, "successfully probed. CPLD version %d.\n",
 			cpld_version);
 
 	ret = of_platform_populate(dev->of_node, NULL, NULL, dev);
