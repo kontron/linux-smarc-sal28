@@ -214,7 +214,7 @@
 
 		partition@140000 {
 			reg = <0x140000 0x0a0000>;
-			label = "failsafe PPA firmware";
+			label = "failsafe trusted firmware";
 			read-only;
 		};
 
@@ -241,7 +241,7 @@
 
 		partition@340000 {
 			reg = <0x340000 0x0a0000>;
-			label = "PPA firmware";
+			label = "trusted firmware";
 		};
 
 		partition@3e0000 {
