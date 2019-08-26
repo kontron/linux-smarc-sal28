@@ -1172,8 +1172,9 @@ MODULE_DEVICE_TABLE(of, nxp_fspi_dt_ids);
 static int nxp_fspi_probe(struct platform_device *pdev)
 {
 	struct spi_nor_hwcaps hwcaps = {
-		.mask = SNOR_HWCAPS_READ_FAST |
-			SNOR_HWCAPS_PP,
+		.mask = SPINOR_OP_READ_FAST_4B |
+			SPINOR_OP_READ_4B |
+			SNOR_HWCAPS_PP
 	};
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
