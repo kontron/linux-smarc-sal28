@@ -181,7 +181,6 @@
 
 &fspi {
 	status = "okay";
-	nxp,fspi-has-second-chip;
 
 	w25q32jw@0 {
 		#address-cells = <1>;
