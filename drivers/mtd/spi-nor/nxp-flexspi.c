@@ -460,7 +460,6 @@ static struct nxp_fspi_devtype_data ls1028a_data = {
 struct nxp_fspi {
 	struct mtd_info mtd[NXP_FSPI_MAX_CHIP];
 	struct spi_nor nor[NXP_FSPI_MAX_CHIP];
-	bool nor_populated[NXP_FSPI_MAX_CHIP];
 	void __iomem *iobase;
 	void __iomem *ahb_addr;
 	u32 memmap_phy;
@@ -1182,7 +1181,7 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct spi_nor *nor;
 	struct mtd_info *mtd;
-	int ret, i = 0, cs_num = 0;
+	int ret, i = 0;
 	int find_node = 0;
 
 	const struct of_device_id *of_id =
@@ -1268,14 +1267,11 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 	find_node = 0;
 	/* iterate the subnodes. */
 	for_each_available_child_of_node(dev->of_node, np) {
-		of_property_read_u32(np, "reg", &cs_num);
-		if (cs_num >= NXP_FSPI_MAX_CHIP)
-			goto last_init_failed;
+		/* skip the holes */
+		if (!fspi->has_second_chip)
+			i *= 2;
 
-		if (fspi->nor_populated[cs_num])
-			goto last_init_failed;
-
-		nor = &fspi->nor[cs_num];
+		nor = &fspi->nor[i];
 		mtd = &nor->mtd;
 
 		nor->dev = dev;
@@ -1295,7 +1291,7 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 		ret = of_property_read_u32(np, "spi-max-frequency",
 				&fspi->clk_rate);
 		if (ret < 0)
-			continue;
+			goto next_node;
 
 		/* set the chip address for READID */
 		nxp_fspi_set_base_addr(fspi, nor);
@@ -1312,11 +1308,11 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 
 		ret = spi_nor_scan(nor, NULL, &hwcaps);
 		if (ret)
-			continue;
+			goto next_node;
 
 		ret = mtd_device_register(mtd, NULL, 0);
 		if (ret)
-			continue;
+			goto next_node;
 
 		/* Set the correct NOR size now. */
 		if (fspi->nor_size == 0) {
@@ -1325,7 +1321,6 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 			/* Map the SPI NOR to accessiable address */
 			nxp_fspi_set_map_addr(fspi);
 		}
-		fspi->nor_populated[cs_num] = 1;
 
 		/*
 		 * The write is working in the  unit of the TX FIFO,
@@ -1338,6 +1333,8 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 			nor->page_size = fspi->devtype_data->txfifo;
 
 		find_node++;
+next_node:
+		i++;
 	}
 
 	if (find_node == 0)
@@ -1352,9 +1349,11 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 	return 0;
 
 last_init_failed:
-	for (i = 0; i < NXP_FSPI_MAX_CHIP; i++) {
-		if (fspi->nor_populated[i])
-			mtd_device_unregister(&fspi->nor[i].mtd);
+	for (i = 0; i < fspi->nor_num; i++) {
+		/* skip the holes */
+		if (!fspi->has_second_chip)
+			i *= 2;
+		mtd_device_unregister(&fspi->mtd[i]);
 	}
 mutex_failed:
 	mutex_destroy(&fspi->lock);
@@ -1370,9 +1369,11 @@ static int nxp_fspi_remove(struct platform_device *pdev)
 	struct nxp_fspi *fspi = platform_get_drvdata(pdev);
 	int i;
 
-	for (i = 0; i < NXP_FSPI_MAX_CHIP; i++) {
-		if (fspi->nor_populated[i])
-			mtd_device_unregister(&fspi->nor[i].mtd);
+	for (i = 0; i < fspi->nor_num; i++) {
+		/* skip the holes */
+		if (!fspi->has_second_chip)
+			i *= 2;
+		mtd_device_unregister(&fspi->nor[i].mtd);
 	}
 
 	/* disable the hardware */
