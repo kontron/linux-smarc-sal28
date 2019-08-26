@@ -316,6 +316,14 @@ struct nxp_fspi_devtype_data {
 	bool little_endian;
 };
 
+static const struct nxp_fspi_devtype_data ls1028a_data = {
+	.rxfifo = SZ_512,       /* (64  * 64 bits)  */
+	.txfifo = SZ_1K,        /* (128 * 64 bits)  */
+	.ahb_buf_size = SZ_2K,  /* (256 * 64 bits)  */
+	.quirks = 0,
+	.little_endian = true,  /* little-endian    */
+};
+
 static const struct nxp_fspi_devtype_data lx2160a_data = {
 	.rxfifo = SZ_512,       /* (64  * 64 bits)  */
 	.txfifo = SZ_1K,        /* (128 * 64 bits)  */
@@ -1077,6 +1085,7 @@ static int nxp_fspi_resume(struct device *dev)
 }
 
 static const struct of_device_id nxp_fspi_dt_ids[] = {
+	{ .compatible = "nxp,ls1028a-fspi", .data = (void *)&ls1028a_data, },
 	{ .compatible = "nxp,lx2160a-fspi", .data = (void *)&lx2160a_data, },
 	{ /* sentinel */ }
 };
