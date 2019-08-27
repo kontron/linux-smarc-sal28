@@ -423,7 +423,7 @@
 	};
 };
 
-&qspi {
+&fspi {
 	num-cs = <1>;
 	bus-num = <0>;
 	status = "okay";
