@@ -124,6 +124,14 @@
 #define SPINOR_OP_RD_EVCR      0x65    /* Read EVCR register */
 #define SPINOR_OP_WD_EVCR      0x61    /* Write EVCR register */
 
+/* Used for Winbond flashes. */
+#define SPINOR_OP_RDSR2_WB	0x35	/* Read status register 2 */
+#define SPINOR_OP_WRSR2_WB	0x31	/* Write status register 2 */
+#define SPINOR_OP_ESECR_WB	0x44	/* Read Security registers */
+#define SPINOR_OP_PSECR_WB	0x42	/* Read Security registers */
+#define SPINOR_OP_RSECR_WB	0x48	/* Read Security registers */
+#define SR2_LB1_WB		BIT(3)	/* Macronix Quad I/O */
+
 /* Status Register bits. */
 #define SR_WIP			BIT(0)	/* Write in progress */
 #define SR_WEL			BIT(1)	/* Write enable latch */
@@ -323,6 +331,15 @@ struct spi_nor {
 	int (*flash_unlock)(struct spi_nor *nor, loff_t ofs, uint64_t len);
 	int (*flash_is_locked)(struct spi_nor *nor, loff_t ofs, uint64_t len);
 	int (*quad_enable)(struct spi_nor *nor);
+
+	u32 otp_size;
+	int n_otps;
+	loff_t otp_start_addr;
+	loff_t otp_addr_offset;
+	int (*otp_read)(struct spi_nor *nor, loff_t from, size_t len, u8 *buf);
+	int (*otp_write)(struct spi_nor *nor, loff_t from, size_t len, u8 *buf);
+	int (*otp_lock)(struct spi_nor *nor, unsigned int region);
+	int (*otp_locked)(struct spi_nor *nor, unsigned int region);
 
 	void *priv;
 };
