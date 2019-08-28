@@ -62,7 +62,7 @@ struct flash_info {
 	u16		page_size;
 	u16		addr_width;
 
-	u16		flags;
+	u32		flags;
 #define SECT_4K			BIT(0)	/* SPINOR_OP_BE_4K works uniformly */
 #define SPI_NOR_NO_ERASE	BIT(1)	/* No erase command needed */
 #define SST_WRITE		BIT(2)	/* use SST byte programming */
@@ -91,8 +91,18 @@ struct flash_info {
 #define SPI_NOR_SKIP_SFDP	BIT(13)	/* Skip parsing of SFDP tables */
 #define USE_CLSR		BIT(14)	/* use CLSR command */
 #define SPI_NOR_OCTAL_READ	BIT(15)	/* Flash supports Octal Read */
+#define SPI_NOR_HAS_OTP		BIT(16) /* Flash supports OTP */
 
 	int	(*quad_enable)(struct spi_nor *nor);
+
+	/* OTP size in bytes */
+	u16 otp_size;
+	/* Number of OTP banks */
+	u16 n_otps;
+	/* Start address of OTP area */
+	loff_t otp_start_addr;
+	/* Offset between consecutive OTP banks if there are more than one */
+	loff_t otp_addr_offset;
 };
 
 #define JEDEC_MFR(info)	((info)->id[0])
@@ -967,6 +977,12 @@ static int macronix_quad_enable(struct spi_nor *nor);
 		.addr_width = 3,					\
 		.flags = SPI_NOR_NO_FR | SPI_S3AN,
 
+#define OTP_INFO(_otp_size, _n_otps, _otp_start_addr, _otp_addr_offset)	\
+	.otp_size = (_otp_size),					\
+	.n_otps = (_n_otps),						\
+	.otp_start_addr = (_otp_start_addr),				\
+	.otp_addr_offset = (_otp_addr_offset),
+
 /* NOTE: double check command sets and memory organization when you add
  * more nor chips.  This current list focusses on newer chips, which
  * have been converging on command sets which including JEDEC ID.
@@ -1237,7 +1253,8 @@ static const struct flash_info spi_nor_ids[] = {
 	{
 		"w25q32dw", INFO(0xef6016, 0, 64 * 1024,  64,
 			SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
-			SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB)
+			SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB | SPI_NOR_HAS_OTP)
+			OTP_INFO(256, 3, 0x1000, 0x1000)
 	},
 	{
 		"w25q32jv", INFO(0xef7016, 0, 64 * 1024,  64,
@@ -1247,7 +1264,8 @@ static const struct flash_info spi_nor_ids[] = {
 	{
 		"w25q32jw", INFO(0xef8016, 0, 64 * 1024,  64,
 			SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
-			SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB)
+			SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB | SPI_NOR_HAS_OTP)
+			OTP_INFO(256, 3, 0x1000, 0x1000)
 	},
 	{ "w25x64", INFO(0xef3017, 0, 64 * 1024, 128, SECT_4K) },
 	{ "w25q64", INFO(0xef4017, 0, 64 * 1024, 128, SECT_4K) },
@@ -1891,6 +1909,36 @@ spi_nor_set_pp_settings(struct spi_nor_pp_command *pp,
  */
 
 /**
+ * spi_nor_read_raw() - raw read of serial flash memory. read_opcode,
+ *                     addr_width and read_dummy members of the struct spi_nor
+ *                     should be previously
+ * set.
+ * @nor:	pointer to a 'struct spi_nor'
+ * @addr:	offset in the serial flash memory
+ * @len:	number of bytes to read
+ * @buf:	buffer where the data is copied into
+ *
+ * Return: 0 on success, -errno otherwise.
+ */
+static int spi_nor_read_raw(struct spi_nor *nor, u32 addr, size_t len, u8 *buf)
+{
+	int ret;
+
+	while (len) {
+		ret = nor->read(nor, addr, len, buf);
+		if (!ret || ret > len)
+			return -EIO;
+		if (ret < 0)
+			return ret;
+
+		buf += ret;
+		addr += ret;
+		len -= ret;
+	}
+	return 0;
+}
+
+/**
  * spi_nor_read_sfdp() - read Serial Flash Discoverable Parameters.
  * @nor:	pointer to a 'struct spi_nor'
  * @addr:	offset in the SFDP area to start reading data from
@@ -1917,22 +1965,8 @@ static int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr,
 	nor->addr_width = 3;
 	nor->read_dummy = 8;
 
-	while (len) {
-		ret = nor->read(nor, addr, len, (u8 *)buf);
-		if (!ret || ret > len) {
-			ret = -EIO;
-			goto read_err;
-		}
-		if (ret < 0)
-			goto read_err;
+	ret = spi_nor_read_raw(nor, addr, len, buf);
 
-		buf += ret;
-		addr += ret;
-		len -= ret;
-	}
-	ret = 0;
-
-read_err:
 	nor->read_opcode = read_opcode;
 	nor->addr_width = addr_width;
 	nor->read_dummy = read_dummy;
@@ -2478,6 +2512,133 @@ exit:
 	return err;
 }
 
+static int winbond_otp_read(struct spi_nor *nor, loff_t addr,
+			    size_t len, u8 *buf)
+{
+	u8 addr_width, read_opcode, read_dummy;
+	enum spi_nor_protocol read_proto;
+	int ret;
+
+	read_opcode = nor->read_opcode;
+	addr_width = nor->addr_width;
+	read_dummy = nor->read_dummy;
+	read_proto = nor->read_proto;
+
+	nor->read_opcode = SPINOR_OP_RSECR_WB;
+	nor->addr_width = 3;
+	nor->read_dummy = 8;
+	nor->read_proto = SNOR_PROTO_1_1_1;
+
+	ret = spi_nor_read_raw(nor, addr, len, buf);
+
+	nor->read_opcode = read_opcode;
+	nor->addr_width = addr_width;
+	nor->read_dummy = read_dummy;
+	nor->read_proto = read_proto;
+
+	return ret;
+}
+
+static int winbond_otp_write(struct spi_nor *nor, loff_t addr,
+			     size_t len, u8 *buf)
+{
+	u8 addr_width, program_opcode;
+	enum spi_nor_protocol write_proto;
+	int ret;
+
+	program_opcode = nor->program_opcode;
+	addr_width = nor->addr_width;
+	write_proto = nor->write_proto;
+
+	nor->program_opcode = SPINOR_OP_PSECR_WB;
+	nor->addr_width = 3;
+	nor->write_proto = SNOR_PROTO_1_1_1;
+
+	ret = spi_nor_lock_and_prep(nor, SPI_NOR_OPS_WRITE);
+	if (ret)
+		return ret;
+
+	/* We only support a write to one single page. For now all winbond
+	 * flashes only have one page per OTP region */
+	write_enable(nor);
+	ret = nor->write(nor, addr, len, buf);
+	if (ret < 0)
+		goto write_err;
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret)
+		goto write_err;
+
+write_err:
+	spi_nor_unlock_and_unprep(nor, SPI_NOR_OPS_WRITE);
+
+	nor->program_opcode = program_opcode;
+	nor->addr_width = addr_width;
+	nor->write_proto = write_proto;
+
+	return ret;
+}
+
+static int winbond_otp_locked(struct spi_nor *nor, unsigned int region)
+{
+	u8 val;
+	int ret;
+
+	ret = nor->read_reg(nor, SPINOR_OP_RDSR2_WB, &val, 1);
+	if (ret)
+		return ret;
+
+	/* W25Q flashes support three different regions */
+	if (region > 2)
+		return -EINVAL;
+
+	return (val & (SR2_LB1_WB << region));
+}
+
+static int winbond_otp_lock(struct spi_nor *nor, unsigned int region)
+{
+	u8 lock_bit;
+	u8 sr2;
+	int ret;
+
+	ret = nor->read_reg(nor, SPINOR_OP_RDSR2_WB, &sr2, 1);
+	if (ret)
+		return ret;
+
+	/* W25Q flashes support three different regions */
+	if (region > 2)
+		return -EINVAL;
+
+	lock_bit = SR2_LB1_WB << region;
+
+	/* check if its already locked */
+	if (sr2 & lock_bit)
+		return 0;
+
+	sr2 |= lock_bit;
+	write_enable(nor);
+
+	ret = nor->write_reg(nor, SPINOR_OP_WRSR2_WB, &sr2, 1);
+	if (ret)
+		return ret;
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret)
+		return ret;
+
+	/* read back */
+	ret = nor->read_reg(nor, SPINOR_OP_RDSR2_WB, &sr2, 1);
+	if (ret)
+		return ret;
+
+	if (!(sr2 & lock_bit)) {
+		dev_err(nor->dev, "Lock bit for region %d not set\n", region);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int spi_nor_init_params(struct spi_nor *nor,
 			       const struct flash_info *info,
 			       struct spi_nor_flash_parameter *params)
@@ -2555,6 +2716,12 @@ static int spi_nor_init_params(struct spi_nor *nor,
 		if (info->quad_enable)
 			params->quad_enable = info->quad_enable;
 	}
+
+	/* OTP parameters */
+	nor->otp_size = info->otp_size;
+	nor->n_otps = info->n_otps;
+	nor->otp_start_addr = info->otp_start_addr;
+	nor->otp_addr_offset = info->otp_addr_offset;
 
 	/* Override the parameters with data read from SFDP tables. */
 	nor->addr_width = 0;
@@ -2832,6 +2999,124 @@ void spi_nor_restore(struct spi_nor *nor)
 }
 EXPORT_SYMBOL_GPL(spi_nor_restore);
 
+static int spi_nor_get_user_prot_info(struct mtd_info *mtd, size_t len,
+				      size_t *retlen, struct otp_info *buf)
+{
+	struct spi_nor *nor = mtd_to_spi_nor(mtd);
+	int i;
+
+	if (!nor->otp_read)
+		return -EOPNOTSUPP;
+
+	for (i = 0; i < nor->n_otps; i++) {
+		loff_t start = nor->otp_start_addr + i * nor->otp_addr_offset;
+		buf[i].start = start;
+		buf[i].length = nor->otp_size;
+		buf[i].locked = nor->otp_locked(nor, i);
+	}
+
+	*retlen = nor->n_otps * sizeof(*buf);
+
+	return 0;
+}
+
+static loff_t spi_nor_otp_region_start(struct spi_nor *nor, int region)
+{
+	return nor->otp_start_addr + region * nor->otp_addr_offset;
+}
+
+static loff_t spi_nor_otp_region_end(struct spi_nor *nor, int region)
+{
+	return nor->otp_start_addr + region * nor->otp_addr_offset
+		+ nor->otp_size;
+}
+
+static int spi_nor_otp_addr_to_region(struct spi_nor *nor, loff_t addr)
+{
+	int i;
+
+	for (i = 0; i < nor->n_otps; i++)
+		if (addr >= spi_nor_otp_region_start(nor, i) &&
+		    addr < spi_nor_otp_region_end(nor, i))
+			return i;
+
+	return -EINVAL;
+}
+
+static int spi_nor_read_user_prot_reg(struct mtd_info *mtd, loff_t from,
+			size_t len, size_t *retlen, u_char *buf)
+{
+	struct spi_nor *nor = mtd_to_spi_nor(mtd);
+	int region;
+	int ret;
+
+	if (!nor->otp_read)
+		return -EOPNOTSUPP;
+
+	*retlen = 0;
+
+	/* check boundaries */
+	region = spi_nor_otp_addr_to_region(nor, from);
+	if (region < 0)
+		return 0;
+
+	if (from < spi_nor_otp_region_start(nor, region) ||
+	    from + len >= spi_nor_otp_region_end(nor, region))
+		return 0;
+
+	ret = nor->otp_read(nor, from, len, buf);
+	if (ret < 0)
+		return ret;
+
+	*retlen = len;
+	return 0;
+}
+
+static int spi_nor_write_user_prot_reg(struct mtd_info *mtd, loff_t from,
+			size_t len, size_t *retlen, u_char *buf)
+{
+	struct spi_nor *nor = mtd_to_spi_nor(mtd);
+	int region;
+	int ret;
+
+	if (!nor->otp_write)
+		return -EOPNOTSUPP;
+
+	*retlen = 0;
+
+	/* check boundaries */
+	region = spi_nor_otp_addr_to_region(nor, from);
+	if (region < 0)
+		return 0;
+
+	if (from < spi_nor_otp_region_start(nor, region) ||
+	    from + len >= spi_nor_otp_region_end(nor, region))
+		return 0;
+
+	ret = nor->otp_write(nor, from, len, buf);
+	if (ret < 0)
+		return ret;
+
+	*retlen = len;
+	return 0;
+}
+
+static int spi_nor_lock_user_prot_reg(struct mtd_info *mtd, loff_t from,
+			size_t len)
+{
+	struct spi_nor *nor = mtd_to_spi_nor(mtd);
+	int region;
+
+	if (!nor->otp_lock)
+		return -EOPNOTSUPP;
+
+	region = spi_nor_otp_addr_to_region(nor, from);
+	if (region < 0)
+		return -EINVAL;
+
+	return nor->otp_lock(nor, region);
+}
+
 int spi_nor_scan(struct spi_nor *nor, const char *name,
 		 const struct spi_nor_hwcaps *hwcaps)
 {
@@ -2918,12 +3203,25 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 		nor->flash_unlock = stm_unlock;
 		nor->flash_is_locked = stm_is_locked;
 	}
+	/* OTP support for Winbond chips */
+	if (JEDEC_MFR(info) == SNOR_MFR_WINBOND ||
+			info->flags & SPI_NOR_HAS_OTP) {
+		nor->otp_lock = winbond_otp_lock;
+		nor->otp_locked = winbond_otp_locked;
+		nor->otp_read = winbond_otp_read;
+		nor->otp_write = winbond_otp_write;
+	}
 
 	if (nor->flash_lock && nor->flash_unlock && nor->flash_is_locked) {
 		mtd->_lock = spi_nor_lock;
 		mtd->_unlock = spi_nor_unlock;
 		mtd->_is_locked = spi_nor_is_locked;
 	}
+
+	mtd->_get_user_prot_info = spi_nor_get_user_prot_info;
+	mtd->_read_user_prot_reg = spi_nor_read_user_prot_reg;
+	mtd->_write_user_prot_reg = spi_nor_write_user_prot_reg;
+	mtd->_lock_user_prot_reg = spi_nor_lock_user_prot_reg;
 
 	/* sst nor chips use AAI word program */
 	if (info->flags & SST_WRITE)
