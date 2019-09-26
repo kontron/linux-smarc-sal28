@@ -57,6 +57,14 @@
 			label = "Lid";
 		};
 	};
+
+	charger {
+		compatible = "gpio-charger";
+		charger-type = "battery";
+		gpios = <&cpld_gpi0 6 GPIO_ACTIVE_LOW>;
+		charging-gpio = <&cpld_gpi0 5 GPIO_ACTIVE_LOW>;
+		bat-low-gpio = <&cpld_gpi0 3 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &esdhc {
