@@ -97,6 +97,7 @@
 		reg = <0x32>;
 		interrupt-parent = <&sl28cpld>;
 		interrupts = <0 0>;
+		wakeup-source;
 	};
 
 	sl28cpld: sl28cpld@4a {
