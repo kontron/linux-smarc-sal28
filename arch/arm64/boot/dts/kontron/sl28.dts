@@ -65,6 +65,8 @@
 		charge-status-gpio = <&cpld_gpi0 5 GPIO_ACTIVE_LOW>;
 		level-low-gpio = <&cpld_gpi0 3 GPIO_ACTIVE_LOW>;
 	};
+
+	/delete-node/ firmware;
 };
 
 &esdhc {
