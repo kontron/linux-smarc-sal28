@@ -104,8 +104,8 @@
 		#size-cells = <0>;
 		compatible = "kontron,sl28cpld";
 		reg = <0x4a>;
-		interrupt-parent = <&gpio1>;
-		interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
+		interrupt-parent = <&gpio2>;
+		interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
 
 		interrupt-controller;
 		#interrupt-cells = <2>;
@@ -135,8 +135,8 @@
 		cpld_gpio0: gpio0@10 {
 			compatible = "kontron,sl28cpld-gpio";
 			reg = <0x10>;
-			interrupt-parent = <&gpio1>;
-			interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
+			interrupt-parent = <&gpio2>;
+			interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
 
 			gpio-controller;
 			#gpio-cells = <2>;
@@ -153,8 +153,8 @@
 		cpld_gpio1: gpio1@15 {
 			compatible = "kontron,sl28cpld-gpio";
 			reg = <0x15>;
-			interrupt-parent = <&gpio1>;
-			interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
+			interrupt-parent = <&gpio2>;
+			interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
 
 			gpio-controller;
 			#gpio-cells = <2>;
