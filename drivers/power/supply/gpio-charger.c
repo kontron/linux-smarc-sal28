@@ -27,6 +27,7 @@ struct gpio_charger {
 	struct power_supply_desc charger_desc;
 	struct gpio_desc *gpiod;
 	struct gpio_desc *charge_status;
+	struct gpio_desc *level_low;
 };
 
 static irqreturn_t gpio_charger_irq(int irq, void *devid)
@@ -57,6 +58,12 @@ static int gpio_charger_get_property(struct power_supply *psy,
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		else
 			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		if (gpiod_get_value_cansleep(gpio_charger->level_low))
+			val->intval = POWER_SUPPLY_CAPACITY_LEVEL_LOW;
+		else
+			val->intval = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
 		break;
 	default:
 		return -EINVAL;
@@ -120,6 +127,7 @@ static int gpio_charger_get_irq(struct device *dev, void *dev_id,
 static enum power_supply_property gpio_charger_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 };
 
 static int gpio_charger_probe(struct platform_device *pdev)
@@ -130,6 +138,7 @@ static int gpio_charger_probe(struct platform_device *pdev)
 	struct gpio_charger *gpio_charger;
 	struct power_supply_desc *charger_desc;
 	struct gpio_desc *charge_status;
+	struct gpio_desc *level_low;
 	int charge_status_irq;
 	unsigned long flags;
 	int ret;
@@ -190,6 +199,15 @@ static int gpio_charger_probe(struct platform_device *pdev)
 	if (charge_status) {
 		gpio_charger->charge_status = charge_status;
 		gpio_charger_properties[num_props] = POWER_SUPPLY_PROP_STATUS;
+		num_props++;
+	}
+
+	level_low = devm_gpiod_get_optional(dev, "level-low", GPIOD_IN);
+	if (IS_ERR(level_low))
+		return PTR_ERR(level_low);
+	if (level_low) {
+		gpio_charger->level_low = level_low;
+		gpio_charger_properties[num_props] = POWER_SUPPLY_PROP_CAPACITY_LEVEL;
 		num_props++;
 	}
 
