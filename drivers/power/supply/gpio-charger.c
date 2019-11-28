@@ -34,6 +34,8 @@ struct gpio_charger {
 	struct power_supply *charger;
 	struct power_supply_desc charger_desc;
 	struct gpio_desc *gpiod;
+	struct gpio_desc *gpiod_batlow;
+	struct gpio_desc *gpiod_charging;
 };
 
 static irqreturn_t gpio_charger_irq(int irq, void *devid)
@@ -54,10 +56,29 @@ static int gpio_charger_get_property(struct power_supply *psy,
 		enum power_supply_property psp, union power_supply_propval *val)
 {
 	struct gpio_charger *gpio_charger = psy_to_gpio_charger(psy);
+	int online = gpiod_get_value_cansleep(gpio_charger->gpiod);
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_STATUS:
+		if (gpio_charger->gpiod_charging && online) {
+			if (gpiod_get_value_cansleep(gpio_charger->gpiod_charging))
+				val->intval = POWER_SUPPLY_STATUS_CHARGING;
+			else
+				val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		} else
+			val->intval = POWER_SUPPLY_STATUS_UNKNOWN;
+		break;
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = gpiod_get_value_cansleep(gpio_charger->gpiod);
+		val->intval = online;
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		if (gpio_charger->gpiod_batlow && online) {
+			if (gpiod_get_value_cansleep(gpio_charger->gpiod_batlow))
+				val->intval = POWER_SUPPLY_CAPACITY_LEVEL_LOW;
+			else
+				val->intval = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
+		} else
+			val->intval = POWER_SUPPLY_CAPACITY_LEVEL_UNKNOWN;
 		break;
 	default:
 		return -EINVAL;
@@ -94,7 +115,9 @@ static enum power_supply_type gpio_charger_get_type(struct device *dev)
 }
 
 static enum power_supply_property gpio_charger_properties[] = {
+	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 };
 
 static int gpio_charger_probe(struct platform_device *pdev)
@@ -121,6 +144,10 @@ static int gpio_charger_probe(struct platform_device *pdev)
 	 * boardfile descriptor tables. It's good to try this first.
 	 */
 	gpio_charger->gpiod = devm_gpiod_get(dev, NULL, GPIOD_IN);
+	gpio_charger->gpiod_batlow = devm_gpiod_get_optional(dev, "bat-low",
+							     GPIOD_IN);
+	gpio_charger->gpiod_charging = devm_gpiod_get_optional(dev, "charging",
+							       GPIOD_IN);
 
 	/*
 	 * If this fails and we're not using device tree, try the
