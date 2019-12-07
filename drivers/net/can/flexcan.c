@@ -91,6 +91,7 @@
 #define FLEXCAN_CTRL2_MRP		BIT(18)
 #define FLEXCAN_CTRL2_RRS		BIT(17)
 #define FLEXCAN_CTRL2_EACEN		BIT(16)
+#define FLEXCAN_CTRL2_ISOCANFDEN	BIT(12)
 
 /* FLEXCAN memory error control register (MECR) bits */
 #define FLEXCAN_MECR_ECRWRDIS		BIT(31)
@@ -1038,7 +1039,7 @@ static void flexcan_set_bittiming(struct net_device *dev)
 	struct can_bittiming *bt = &priv->can.bittiming;
 	struct can_bittiming *data_bt = &priv->can.data_bittiming;
 	struct flexcan_regs __iomem *regs = priv->regs;
-	u32 reg_ctrl, reg_mcr, reg_cbt, reg_fdcbt, reg_fdctrl;
+	u32 reg_ctrl, reg_mcr, reg_cbt, reg_fdcbt, reg_fdctrl, reg_ctrl2;
 
 	reg_mcr = priv->read(&regs->mcr);
 	reg_ctrl = priv->read(&regs->ctrl);
@@ -1058,6 +1059,7 @@ static void flexcan_set_bittiming(struct net_device *dev)
 		reg_cbt = priv->read(&regs->cbt);
 		reg_fdcbt = priv->read(&regs->fdcbt);
 		reg_fdctrl = priv->read(&regs->fdctrl);
+		reg_ctrl2 = priv->read(&regs->ctrl2);
 
 		reg_cbt |= FLEXCAN_CBT_BTF;
 		reg_cbt &= ~(FLEXCAN_CBT_EPRESDIV(0x3ff) |
@@ -1106,6 +1108,8 @@ static void flexcan_set_bittiming(struct net_device *dev)
 			     FLEXCAN_FDCBT_FPSEG1(data_bt->phase_seg1 - 1) |
 			     FLEXCAN_FDCBT_FPSEG2(data_bt->phase_seg2 - 1);
 
+		reg_ctrl2 &= ~FLEXCAN_CTRL2_ISOCANFDEN;
+
 		if (priv->can.ctrlmode & CAN_CTRLMODE_FD) {
 			u32 tdcoff;
 			/* No TDC is needed for data bit rates up to 2.5 MBit/s
@@ -1127,6 +1131,8 @@ static void flexcan_set_bittiming(struct net_device *dev)
 			reg_fdctrl |= FLEXCAN_FDCTRL_TDCOFF(tdcoff);
 			reg_fdctrl |= FLEXCAN_FDCTRL_MBDSR0(3) |
 				      FLEXCAN_FDCTRL_MBDSR1(3);
+			if (!(priv->can.ctrlmode & CAN_CTRLMODE_FD_NON_ISO))
+				reg_ctrl2 |= FLEXCAN_CTRL2_ISOCANFDEN;
 		} else {
 			reg_fdctrl |= FLEXCAN_FDCTRL_MBDSR0(0) |
 				      FLEXCAN_FDCTRL_MBDSR1(0);
@@ -1138,6 +1144,7 @@ static void flexcan_set_bittiming(struct net_device *dev)
 		priv->write(reg_fdctrl, &regs->fdctrl);
 		priv->write(reg_cbt, &regs->cbt);
 		priv->write(reg_fdcbt, &regs->fdcbt);
+		priv->write(reg_ctrl2, &regs->ctrl2);
 	} else {
 		reg_ctrl &= ~(FLEXCAN_CTRL_PRESDIV(0xff) |
 			FLEXCAN_CTRL_RJW(0x3) |
@@ -1755,7 +1762,7 @@ static int flexcan_probe(struct platform_device *pdev)
 
 	if (priv->devtype_data->quirks & FLEXCAN_QUIRK_USE_FD) {
 		priv->can.bittiming_const = &extended_flexcan_bittiming_const;
-		priv->can.ctrlmode_supported |= CAN_CTRLMODE_FD;
+		priv->can.ctrlmode_supported |= CAN_CTRLMODE_FD | CAN_CTRLMODE_FD_NON_ISO;
 		priv->can.data_bittiming_const = &flexcan_data_bittiming_const;
 	}
 
