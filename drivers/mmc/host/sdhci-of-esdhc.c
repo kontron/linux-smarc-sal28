@@ -844,6 +844,14 @@ static int esdhc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	esdhc_tuning_block_enable(host, true);
 
+	/* The eSDHC controller takes the data timeout value into
+	 * account * during tuning. And if the timer expires the
+	 * buffer read ready interrupt will be triggered although
+	 * there was no data. This might lead to tuning errors.
+	 * Set the timeout to maximum value.
+	 */
+	sdhci_writeb(host, 0xe, SDHCI_TIMEOUT_CONTROL);
+
 	hs400_tuning = host->flags & SDHCI_HS400_TUNING;
 	ret = sdhci_execute_tuning(mmc, opcode);
 
