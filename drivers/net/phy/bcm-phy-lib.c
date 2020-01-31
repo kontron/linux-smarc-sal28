@@ -163,6 +163,56 @@ int bcm_phy_write_shadow(struct phy_device *phydev, u16 shadow,
 }
 EXPORT_SYMBOL_GPL(bcm_phy_write_shadow);
 
+int __bcm_phy_read_rdb(struct phy_device *phydev, u16 rdb)
+{
+	int val;
+
+	val = __phy_write(phydev, MII_BCM54XX_RDB_ADDR, rdb);
+	if (val < 0)
+		return val;
+
+	return __phy_read(phydev, MII_BCM54XX_RDB_DATA);
+}
+EXPORT_SYMBOL_GPL(__bcm_phy_read_rdb);
+
+int bcm_phy_read_rdb(struct phy_device *phydev, u16 rdb)
+{
+	struct mii_bus *bus = phydev->mdio.bus;
+	int ret;
+
+	mutex_lock(&bus->mdio_lock);
+	ret = __bcm_phy_read_rdb(phydev, rdb);
+	mutex_unlock(&bus->mdio_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(bcm_phy_read_rdb);
+
+int __bcm_phy_write_rdb(struct phy_device *phydev, u16 rdb, u16 val)
+{
+	int ret;
+
+	ret = __phy_write(phydev, MII_BCM54XX_RDB_ADDR, rdb);
+	if (ret < 0)
+		return ret;
+
+	return __phy_write(phydev, MII_BCM54XX_RDB_DATA, val);
+}
+EXPORT_SYMBOL_GPL(__bcm_phy_write_rdb);
+
+int bcm_phy_write_rdb(struct phy_device *phydev, u16 rdb, u16 val)
+{
+	struct mii_bus *bus = phydev->mdio.bus;
+	int ret;
+
+	mutex_lock(&bus->mdio_lock);
+	ret = __bcm_phy_write_rdb(phydev, rdb, val);
+	mutex_unlock(&bus->mdio_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(bcm_phy_write_rdb);
+
 int bcm_phy_enable_apd(struct phy_device *phydev, bool dll_pwr_down)
 {
 	int val;

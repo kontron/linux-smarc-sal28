@@ -442,6 +442,58 @@ static int bcm5481_config_aneg(struct phy_device *phydev)
 	return ret;
 }
 
+static int bcm54140_b0_workaround(struct phy_device *phydev)
+{
+	int spare3;
+	int ret;
+
+	spare3 = bcm_phy_read_rdb(phydev, BCM54XX_RDB_SPARE3);
+	if (spare3 < 0)
+		return spare3;
+
+	spare3 &= ~BCM54XX_RDB_SPARE3_BIT0;
+
+	ret = bcm_phy_write_rdb(phydev, BCM54XX_RDB_SPARE3, spare3);
+	if (ret)
+		return ret;
+
+	ret = phy_modify(phydev, MII_BMCR, 0, BMCR_PDOWN);
+	if (ret)
+		return ret;
+
+	ret = phy_modify(phydev, MII_BMCR, BMCR_PDOWN, 0);
+	if (ret)
+		return ret;
+
+	spare3 |= BCM54XX_RDB_SPARE3_BIT0;
+
+	return bcm_phy_write_rdb(phydev, BCM54XX_RDB_SPARE3, spare3);
+}
+
+static int bcm54140_config_init(struct phy_device *phydev)
+{
+	int reg, val;
+	int ret;
+
+	ret = bcm54140_b0_workaround(phydev);
+	if (ret)
+		return ret;
+
+	/* LED1=LINKSPD[1], LED2=LINKSPD[2], LED3=ACTIVITY */
+	val = bcm_phy_read_rdb(phydev, BCM54XX_RDB_SPARE1);
+	if (val < 0)
+		return val;
+	val |= BCM54XX_RDB_SPARE1_LSLM;
+	ret = bcm_phy_write_rdb(phydev, BCM54XX_RDB_SPARE1, val);
+	if (ret)
+		return ret;
+	val = bcm_phy_read_rdb(phydev, BCM54XX_RDB_LED_CTRL);
+	if (val < 0)
+		return val;
+	val |= BCM54XX_RDB_LED_CTRL_ACTLINK0;
+	return bcm_phy_write_rdb(phydev, BCM54XX_RDB_LED_CTRL, val);
+}
+
 static int brcm_phy_setbits(struct phy_device *phydev, int reg, int set)
 {
 	int val;
@@ -741,8 +793,16 @@ static struct phy_driver broadcom_drivers[] = {
 	.config_init    = bcm54xx_config_init,
 	.ack_interrupt  = bcm_phy_ack_intr,
 	.config_intr    = bcm_phy_config_intr,
-} };
+}, {
+	.phy_id         = PHY_ID_BCM54140,
+	.phy_id_mask    = 0xfffffff0,
+	.name           = "Broadcom BCM54140",
+	.features       = PHY_GBIT_FEATURES,
+	.config_init    = bcm54140_config_init,
+	.suspend	= genphy_suspend,
+	.resume		= genphy_resume,
 
+} };
 module_phy_driver(broadcom_drivers);
 
 static struct mdio_device_id __maybe_unused broadcom_tbl[] = {
@@ -763,6 +823,7 @@ static struct mdio_device_id __maybe_unused broadcom_tbl[] = {
 	{ PHY_ID_BCM5241, 0xfffffff0 },
 	{ PHY_ID_BCM5395, 0xfffffff0 },
 	{ PHY_ID_BCM89610, 0xfffffff0 },
+	{ PHY_ID_BCM54140, 0xfffffff0 },
 	{ }
 };
 
