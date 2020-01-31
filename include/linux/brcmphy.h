@@ -24,6 +24,7 @@
 #define PHY_ID_BCM5461			0x002060c0
 #define PHY_ID_BCM54612E		0x03625e60
 #define PHY_ID_BCM54616S		0x03625d10
+#define PHY_ID_BCM54140			0xae025019
 #define PHY_ID_BCM57780			0x03625d90
 #define PHY_ID_BCM89610			0x03625cd0
 
@@ -111,6 +112,9 @@
 #define MII_BCM54XX_SHD_WRITE	0x8000
 #define MII_BCM54XX_SHD_VAL(x)	((x & 0x1f) << 10)
 #define MII_BCM54XX_SHD_DATA(x)	((x & 0x3ff) << 0)
+
+#define MII_BCM54XX_RDB_ADDR	0x1e
+#define MII_BCM54XX_RDB_DATA	0x1f
 
 /*
  * AUXILIARY CONTROL SHADOW ACCESS REGISTERS.  (PHY REG 0x18)
@@ -205,6 +209,17 @@
 #define  MII_BCM54XX_EXP_EXP96_MYST		0x0010
 #define MII_BCM54XX_EXP_EXP97			0x0f97
 #define  MII_BCM54XX_EXP_EXP97_MYST		0x0c0c
+
+/*
+ * RDB per-port registers
+ */
+#define BCM54XX_RDB_SPARE1		0x012	/* spare control 1 */
+#define  BCM54XX_RDB_SPARE1_LSLM	BIT(2)	/* link speed LED mode */
+#define BCM54XX_RDB_SPARE3		0x015	/* spare control 3 */
+#define  BCM54XX_RDB_SPARE3_BIT0	BIT(0)
+#define BCM54XX_RDB_LED_CTRL		0x019	/* LED control */
+#define  BCM54XX_RDB_LED_CTRL_ACTLINK0	BIT(4)
+#define  BCM54XX_RDB_LED_CTRL_ACTLINK1	BIT(8)
 
 /*
  * BCM5482: Secondary SerDes registers
