@@ -336,15 +336,6 @@
 &enetc_port1 {
 	phy-handle = <&phy1>;
 	phy-connection-type = "rgmii";
-	status = "disabled";
-};
-
-&enetc_port2 {
-	status = "disabled";
-};
-
-&mscc_felix_port4 {
-	status = "disabled";
 };
 
 &gpio1 {

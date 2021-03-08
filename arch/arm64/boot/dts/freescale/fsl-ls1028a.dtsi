@@ -965,10 +965,12 @@
 			enetc_port0: ethernet@0,0 {
 				compatible = "fsl,enetc";
 				reg = <0x000000 0 0 0 0>;
+				status = "disabled";
 			};
 			enetc_port1: ethernet@0,1 {
 				compatible = "fsl,enetc";
 				reg = <0x000100 0 0 0 0>;
+				status = "disabled";
 			};
 			enetc_mdio_pf3: mdio@0,3 {
 				compatible = "fsl,enetc-mdio";
@@ -979,6 +981,7 @@
 			enetc_port2: ethernet@0,2 {
 				compatible = "fsl,enetc";
 				reg = <0x000200 0 0 0 0>;
+				status = "disabled";
 				fixed-link {
 					speed = <1000>;
 					full-duplex;
@@ -992,10 +995,11 @@
 				fsl,extts-fifo;
 			};
 
-			ethernet-switch@0,5 {
+			mscc_felix: ethernet-switch@0,5 {
 				reg = <0x000500 0 0 0 0>;
 				/* IEP INT_B */
 				interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
 
 				mscc_felix_ports: ports {
 					#address-cells = <1>;
@@ -1031,6 +1035,7 @@
 						reg = <4>;
 						ethernet = <&enetc_port2>;
 						phy-mode = "internal";
+						status = "disabled";
 
 						fixed-link {
 							speed = <2500>;
