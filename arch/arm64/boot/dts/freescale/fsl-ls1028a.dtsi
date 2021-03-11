@@ -694,6 +694,7 @@
 			dma-names = "tx", "rx";
 			dmas = <&edma0 1 4>,
 			       <&edma0 1 3>;
+			fsl,shared-interrupt;
 			fsl,sai-asynchronous;
 			status = "disabled";
 		};
@@ -710,6 +711,7 @@
 			dma-names = "tx", "rx";
 			dmas = <&edma0 1 6>,
 			       <&edma0 1 5>;
+			fsl,shared-interrupt;
 			fsl,sai-asynchronous;
 			status = "disabled";
 		};
@@ -726,6 +728,7 @@
 			dma-names = "tx", "rx";
 			dmas = <&edma0 1 8>,
 			       <&edma0 1 7>;
+			fsl,shared-interrupt;
 			fsl,sai-asynchronous;
 			status = "disabled";
 		};
@@ -742,6 +745,7 @@
 			dma-names = "tx", "rx";
 			dmas = <&edma0 1 10>,
 			       <&edma0 1 9>;
+			fsl,shared-interrupt;
 			fsl,sai-asynchronous;
 			status = "disabled";
 		};
@@ -758,6 +762,7 @@
 			dma-names = "tx", "rx";
 			dmas = <&edma0 1 12>,
 			       <&edma0 1 11>;
+			fsl,shared-interrupt;
 			fsl,sai-asynchronous;
 			status = "disabled";
 		};
@@ -774,6 +779,7 @@
 			dma-names = "tx", "rx";
 			dmas = <&edma0 1 14>,
 			       <&edma0 1 13>;
+			fsl,shared-interrupt;
 			fsl,sai-asynchronous;
 			status = "disabled";
 		};
