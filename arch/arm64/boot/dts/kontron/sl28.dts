@@ -335,7 +335,7 @@
 
 &enetc_port1 {
 	phy-handle = <&phy1>;
-	phy-connection-type = "rgmii";
+	phy-connection-type = "rgmii-id";
 };
 
 &gpio1 {
