@@ -91,6 +91,7 @@
 	 * driver will wait for a huge 1000ms timeout. This breaks the at24
 	 * driver for example. So disable the DMA engine for now. */
 	dma-names = <>;
+	clock-frequency = <400000>;
 
 	rtc@32 {
 		compatible = "microcrystal,rv8803";
@@ -205,6 +206,7 @@
 	 * driver will wait for a huge 1000ms timeout. This breaks the at24
 	 * driver for example. So disable the DMA engine for now. */
 	dma-names = <>;
+	clock-frequency = <100000>;
 };
 
 &i2c4 {
@@ -215,6 +217,7 @@
 	 * driver will wait for a huge 1000ms timeout. This breaks the at24
 	 * driver for example. So disable the DMA engine for now. */
 	dma-names = <>;
+	clock-frequency = <100000>;
 
 	eeprom@50 {
 		compatible = "atmel,24c32";
