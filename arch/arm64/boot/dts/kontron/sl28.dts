@@ -322,10 +322,14 @@
 &enetc_mdio_pf3 {
 	phy0: ethernet-phy@5 {
 		reg = <0x5>;
+		eee-broken-1000t;
+		eee-broken-100tx;
 	};
 
 	phy1: ethernet-phy@4 {
 		reg = <0x4>;
+		eee-broken-1000t;
+		eee-broken-100tx;
 		status = "disabled";
 	};
 };
