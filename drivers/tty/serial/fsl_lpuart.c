@@ -1702,13 +1702,6 @@ static void lpuart32_setup_watermark(struct lpuart_port *sport)
 	      (0x0 << UARTWATER_TXWATER_OFF);
 	lpuart32_write(&sport->port, val, UARTWATER);
 
-	/* set RTS watermark */
-	if (!uart_console(&sport->port)) {
-		val = lpuart32_read(&sport->port, UARTMODIR);
-		val = (sport->rxfifo_size >> 1) << UARTMODIR_RTSWATER_S;
-		lpuart32_write(&sport->port, val, UARTMODIR);
-	}
-
 	/* Restore cr2 */
 	lpuart32_write(&sport->port, ctrl_saved, UARTCTRL);
 }
@@ -1950,7 +1943,6 @@ static void lpuart32_shutdown(struct uart_port *port)
 		UARTCTRL_TCIE | UARTCTRL_RIE | UARTCTRL_ILIE |
 		UARTCTRL_LOOPS);
 	lpuart32_write(port, temp, UARTCTRL);
-	lpuart32_write(port, 0, UARTMODIR);
 
 	spin_unlock_irqrestore(&port->lock, flags);
 
