@@ -170,8 +170,9 @@ int ocelot_qbv_set(struct ocelot *ocelot, int port_id,
 		       QSYS_TAG_CONFIG,
 		       port_id);
 
-	ocelot_write_rix(ocelot, shaper_config->maxsdu,
-			 QSYS_PORT_MAX_SDU, port_id);
+	if (shaper_config->maxsdu)
+		ocelot_write_rix(ocelot, shaper_config->maxsdu,
+				 QSYS_PORT_MAX_SDU, port_id);
 	/* TODO: add queue max SDU set */
 
 	if (shaper_config->gate_enabled) {
