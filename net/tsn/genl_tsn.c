@@ -2189,6 +2189,10 @@ static int cmd_qbv_set(struct genl_info *info)
 	if (qbv[TSN_QBV_ATTR_CONFIGCHANGE])
 		qbvconfig.config_change = 1;
 
+	if (qbv[TSN_QBV_ATTR_MAXSDU])
+		qbvconfig.maxsdu =
+			nla_get_u32(qbv[TSN_QBV_ATTR_MAXSDU]);
+
 	if (!qbv[TSN_QBV_ATTR_ADMINENTRY]) {
 		tsn_simple_reply(info, TSN_CMD_REPLY,
 				 netdev->name, -EINVAL);
