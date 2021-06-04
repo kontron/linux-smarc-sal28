@@ -141,8 +141,10 @@ int ocelot_qbv_set(struct ocelot *ocelot, int port_id,
 
 	/* Select port */
 	ocelot_rmw(ocelot,
-		   QSYS_TAS_PARAM_CFG_CTRL_PORT_NUM(port_id),
-		   QSYS_TAS_PARAM_CFG_CTRL_PORT_NUM_M,
+		   QSYS_TAS_PARAM_CFG_CTRL_PORT_NUM(port_id) |
+		   QSYS_TAS_PARAM_CFG_CTRL_ALWAYS_GUARD_BAND_SCH_Q,
+		   QSYS_TAS_PARAM_CFG_CTRL_PORT_NUM_M |
+		   QSYS_TAS_PARAM_CFG_CTRL_ALWAYS_GUARD_BAND_SCH_Q,
 		   QSYS_TAS_PARAM_CFG_CTRL);
 
 	val = ocelot_read(ocelot, QSYS_PARAM_STATUS_REG_8);
