@@ -172,9 +172,24 @@ int ocelot_qbv_set(struct ocelot *ocelot, int port_id,
 		       QSYS_TAG_CONFIG,
 		       port_id);
 
-	if (shaper_config->maxsdu)
+	if (shaper_config->maxsdu) {
 		ocelot_write_rix(ocelot, shaper_config->maxsdu,
-				 QSYS_PORT_MAX_SDU, port_id);
+				 QSYS_QMAXSDU_CFG_0, port_id);
+		ocelot_write_rix(ocelot, shaper_config->maxsdu,
+				 QSYS_QMAXSDU_CFG_1, port_id);
+		ocelot_write_rix(ocelot, shaper_config->maxsdu,
+				 QSYS_QMAXSDU_CFG_2, port_id);
+		ocelot_write_rix(ocelot, shaper_config->maxsdu,
+				 QSYS_QMAXSDU_CFG_3, port_id);
+		ocelot_write_rix(ocelot, shaper_config->maxsdu,
+				 QSYS_QMAXSDU_CFG_4, port_id);
+		ocelot_write_rix(ocelot, shaper_config->maxsdu,
+				 QSYS_QMAXSDU_CFG_5, port_id);
+		ocelot_write_rix(ocelot, shaper_config->maxsdu,
+				 QSYS_QMAXSDU_CFG_6, port_id);
+		ocelot_write_rix(ocelot, shaper_config->maxsdu,
+				 QSYS_QMAXSDU_CFG_7, port_id);
+	}
 	/* TODO: add queue max SDU set */
 
 	if (shaper_config->gate_enabled) {
